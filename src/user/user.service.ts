@@ -1,104 +1,112 @@
-import { BadRequestException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuthLoginDto, AuthRegisterDto, UpdateUserDto } from './dto';
 import { UserEntity } from './user.entity';
 import { User, UserRO } from './user.interface';
-import * as argon from 'argon2'
-
+import * as argon from 'argon2';
+// eslint-disable-next-line
 const jwt = require('jsonwebtoken');
 
 @Injectable()
 export class UserService {
-    constructor(
-        @InjectRepository(UserEntity) private userRepository:Repository<UserEntity>,
-        private configService: ConfigService
-    ){}
+  constructor(
+    @InjectRepository(UserEntity)
+    private userRepository: Repository<UserEntity>,
+    private configService: ConfigService,
+  ) {}
 
-    async registerUser(dto:AuthRegisterDto):Promise<UserRO>{
-        const userFound:UserEntity = await this.userRepository.findOne({
-            where:[
-                {email: dto.email},
-                {username: dto.username}
-            ]
-        })
+  async registerUser(dto: AuthRegisterDto): Promise<UserRO> {
+    const userFound: UserEntity = await this.userRepository.findOne({
+      where: [{ email: dto.email }, { username: dto.username }],
+    });
 
-        if(userFound){
-            throw new BadRequestException({message:"Username or email already exists"})
-        }
-
-        const user:UserEntity = new UserEntity()
-        user.email = dto.email
-        user.password = dto.password
-        user.username = dto.username
-        
-        const savedUser:UserEntity = await this.userRepository.save(user)
-        return this.buildUserRO(savedUser)
+    if (userFound) {
+      throw new BadRequestException({
+        message: 'Username or email already exists',
+      });
     }
 
-    async loginUser(dto:AuthLoginDto):Promise<UserRO>{
-        const userFound:UserEntity = await this.userRepository.findOne({
-            where:{
-                email: dto.email
-            }
-        })
+    const user: UserEntity = new UserEntity();
+    user.email = dto.email;
+    user.password = dto.password;
+    user.username = dto.username;
 
-        if(!userFound){
-            throw new UnauthorizedException({message:"Invalid email or password"})
-        }
+    const savedUser: UserEntity = await this.userRepository.save(user);
+    return this.buildUserRO(savedUser);
+  }
 
-        const isMatch:boolean = await argon.verify(userFound.password,dto.password)
-        
-        if(!isMatch){
-            throw new UnauthorizedException({message:"Invalid email or password"})
-        }
+  async loginUser(dto: AuthLoginDto): Promise<UserRO> {
+    const userFound: UserEntity = await this.userRepository.findOne({
+      where: {
+        email: dto.email,
+      },
+    });
 
-        return this.buildUserRO(userFound)
+    if (!userFound) {
+      throw new UnauthorizedException({ message: 'Invalid email or password' });
     }
 
-    async updateUser(currentUserId:number, dto:UpdateUserDto):Promise<UserRO>{
-        const user:UserEntity = await this.userRepository.findOne({
-            where:{
-                id: currentUserId
-            }
-        })
+    const isMatch: boolean = await argon.verify(
+      userFound.password,
+      dto.password,
+    );
 
-        user.bio = dto.bio
-        user.email = dto.email
-        user.image = dto.image
-
-        try {
-            const savedUser:UserEntity = await this.userRepository.save(user) 
-               
-            return this.buildUserRO(savedUser)
-        } catch (error) {
-            throw error
-        }
+    if (!isMatch) {
+      throw new UnauthorizedException({ message: 'Invalid email or password' });
     }
 
-    private generateJWT(user:UserEntity): string{
-        
-        return jwt.sign({
-            id: user.id,
-            email: user.email,
-            username: user.username,
-            exp: new Date().getTime() + (60 * 60 * 1000),   //on hour
-        },this.configService.get('SECRET'))
-    }
+    return this.buildUserRO(userFound);
+  }
 
-    public buildUserRO(entity:UserEntity, includeToken:boolean = true):UserRO{
-        const user:User = {
-            email: entity.email,
-            username: entity.username,
-            bio: (entity.bio) ? entity.bio : '',
-            image: (entity.image) ? entity.image : null,
-            token: (includeToken) ? this.generateJWT(entity) : null
-        }
-        if(!includeToken)
-            delete user.token
-        return {
-            user: user
-        }
+  async updateUser(currentUserId: number, dto: UpdateUserDto): Promise<UserRO> {
+    const user: UserEntity = await this.userRepository.findOne({
+      where: {
+        id: currentUserId,
+      },
+    });
+
+    user.bio = dto.bio;
+    user.email = dto.email;
+    user.image = dto.image;
+
+    try {
+      const savedUser: UserEntity = await this.userRepository.save(user);
+
+      return this.buildUserRO(savedUser);
+    } catch (error) {
+      throw error;
     }
+  }
+
+  private generateJWT(user: UserEntity): string {
+    return jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        exp: new Date().getTime() + 60 * 60 * 1000, //on hour
+      },
+      this.configService.get('SECRET'),
+    );
+  }
+
+  public buildUserRO(entity: UserEntity, includeToken: boolean = true): UserRO {
+    const user: User = {
+      email: entity.email,
+      username: entity.username,
+      bio: entity.bio ? entity.bio : '',
+      image: entity.image ? entity.image : null,
+      token: includeToken ? this.generateJWT(entity) : null,
+    };
+    if (!includeToken) delete user.token;
+    return {
+      user: user,
+    };
+  }
 }

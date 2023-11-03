@@ -8,18 +8,18 @@ import { ProfileController } from './profile.controller';
 import { ProfileService } from './profile.service';
 
 @Module({
-  imports:[
-    TypeOrmModule.forFeature([UserEntity ,FollowerEntity]),
-    UserModule
-  ],
+  imports: [TypeOrmModule.forFeature([UserEntity, FollowerEntity]), UserModule],
   controllers: [ProfileController],
-  providers: [ProfileService]
+  providers: [ProfileService],
 })
 export class ProfileModule {
   public configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(AuthMiddleware)
-      .forRoutes({path: 'profiles/:username', method: RequestMethod.GET}, {path: 'profiles/:username/follow', method: RequestMethod.POST},
-      {path: 'profiles/:username/follow', method: RequestMethod.DELETE});
+      .forRoutes(
+        { path: 'profiles/:username', method: RequestMethod.GET },
+        { path: 'profiles/:username/follow', method: RequestMethod.POST },
+        { path: 'profiles/:username/follow', method: RequestMethod.DELETE },
+      );
   }
 }
