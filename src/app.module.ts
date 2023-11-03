@@ -13,7 +13,7 @@ import { UserModule } from './user/user.module';
       // envFilePath: '../.env',
       isGlobal: true,
     }),
-    TypeOrmModule.forRoot({
+    TypeOrmModule.forRoot({   //TODO: Thing how we can read all these configurations from .env and give it here
       type: 'mysql',
       host: 'localhost',
       port: 3306,

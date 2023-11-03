@@ -1,10 +1,12 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuthLoginDto, AuthRegisterDto } from './dto';
 import { UserEntity } from './user.entity';
 import { User, UserRO } from './user.interface';
+import * as argon from 'argon2'
+
 const jwt = require('jsonwebtoken');
 
 @Injectable()
@@ -35,8 +37,24 @@ export class UserService {
         return this.buildUserRO(savedUser)
     }
 
-    loginUser(dto:AuthLoginDto){
+    async loginUser(dto:AuthLoginDto):Promise<UserRO>{
+        const userFound:UserEntity = await this.userRepository.findOne({
+            where:{
+                email: dto.email
+            }
+        })
+
+        if(!userFound){
+            throw new UnauthorizedException({message:"Invalid email or password"})
+        }
+
+        const isMatch:boolean = await argon.verify(userFound.password,dto.password)
         
+        if(!isMatch){
+            throw new UnauthorizedException({message:"Invalid email or password"})
+        }
+
+        return this.buildUserRO(userFound)
     }
 
     private generateToken(user:UserEntity): string{
