@@ -6,10 +6,10 @@ export class UserEntity{
     @PrimaryGeneratedColumn()
     id: number
 
-    @Column()
+    @Column()   //TODO: add unique
     email: string
 
-    @Column({length: 100})
+    @Column({length: 100}) //TODO: add unique
     username: string
 
     @Column({default: ''})
