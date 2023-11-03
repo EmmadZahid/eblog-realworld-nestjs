@@ -2,7 +2,7 @@ import { BadRequestException, HttpException, HttpStatus, Injectable, Unauthorize
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { AuthLoginDto, AuthRegisterDto } from './dto';
+import { AuthLoginDto, AuthRegisterDto, UpdateUserDto } from './dto';
 import { UserEntity } from './user.entity';
 import { User, UserRO } from './user.interface';
 import * as argon from 'argon2'
@@ -57,6 +57,26 @@ export class UserService {
         return this.buildUserRO(userFound)
     }
 
+    async updateUser(currentUserId:number, dto:UpdateUserDto):Promise<UserRO>{
+        const user:UserEntity = await this.userRepository.findOne({
+            where:{
+                id: currentUserId
+            }
+        })
+
+        user.bio = dto.bio
+        user.email = dto.email
+        user.image = dto.image
+
+        try {
+            const savedUser:UserEntity = await this.userRepository.save(user) 
+               
+            return this.buildUserRO(savedUser)
+        } catch (error) {
+            throw error
+        }
+    }
+
     private generateJWT(user:UserEntity): string{
         
         return jwt.sign({
@@ -71,8 +91,8 @@ export class UserService {
         const user:User = {
             email: entity.email,
             username: entity.username,
-            bio: entity.bio,
-            image: entity.bio,
+            bio: (entity.bio) ? entity.bio : '',
+            image: (entity.image) ? entity.image : null,
             token: (includeToken) ? this.generateJWT(entity) : null
         }
         if(!includeToken)
