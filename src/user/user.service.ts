@@ -57,27 +57,26 @@ export class UserService {
         return this.buildUserRO(userFound)
     }
 
-    private generateToken(user:UserEntity): string{
-        let today = new Date();
-        let exp = new Date(today);
-        exp.setDate(today.getDate() + 60);
-
+    private generateJWT(user:UserEntity): string{
+        
         return jwt.sign({
             id: user.id,
             email: user.email,
             username: user.username,
-            exp: exp.getTime() / 1000,
+            exp: new Date().getTime() + (60 * 60 * 1000),   //on hour
         },this.configService.get('SECRET'))
     }
 
-    private buildUserRO(entity:UserEntity):UserRO{
+    public buildUserRO(entity:UserEntity, includeToken:boolean = true):UserRO{
         const user:User = {
             email: entity.email,
             username: entity.username,
             bio: entity.bio,
             image: entity.bio,
-            token: this.generateToken(entity)
+            token: (includeToken) ? this.generateJWT(entity) : null
         }
+        if(!includeToken)
+            delete user.token
         return {
             user: user
         }
