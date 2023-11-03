@@ -7,6 +7,7 @@ export class UserInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<{user:UserEntity}> {
     return next.handle().pipe(
       map((data:UserEntity) =>{
+        delete data.password
         return {
           user: data
         }
