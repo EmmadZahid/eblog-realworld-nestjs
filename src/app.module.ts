@@ -5,10 +5,12 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserEntity } from './user/user.entity';
 import { UserModule } from './user/user.module';
+import { ProfileModule } from './profile/profile.module';
 
 @Module({
   imports: [
     UserModule,
+    ProfileModule,
     ConfigModule.forRoot({
       // envFilePath: '../.env',
       isGlobal: true,
@@ -23,6 +25,7 @@ import { UserModule } from './user/user.module';
       autoLoadEntities: true, //It will load all the entities mentioned in 'entities' of forFeature()
       synchronize: true,  //TODO: Why do we need it?
     }),
+    ProfileModule,
   ],
   controllers: [AppController],
   providers: [AppService],
