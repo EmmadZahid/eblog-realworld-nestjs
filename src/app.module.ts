@@ -2,9 +2,12 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { UserEntity } from './user/user.entity';
+import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
+    UserModule,
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: 'localhost',
@@ -12,7 +15,7 @@ import { AppService } from './app.service';
       username: 'root',
       password: '1q2w3e4r.',
       database: 'eblog_db',
-      entities: [],
+      autoLoadEntities: true, //It will load all the entities mentioned in 'entities' of forFeature()
       synchronize: true,  //TODO: Why do we need it?
     }),
   ],
