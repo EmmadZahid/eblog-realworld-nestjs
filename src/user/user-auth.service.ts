@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AuthLoginDto, AuthRegisterDto } from './dto';
 
 @Injectable()
-export class AuthService {
+export class UserAuthService {
 
     registerUser(dto:AuthRegisterDto){
 
