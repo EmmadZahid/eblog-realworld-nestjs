@@ -5,6 +5,6 @@ export class TagEntity{
     @PrimaryGeneratedColumn()
     id: number
 
-    @Column({unique: true})
+    @Column()
     tag:string
 }

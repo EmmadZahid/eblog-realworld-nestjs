@@ -6,7 +6,7 @@ export class ArticleEntity{
     @PrimaryGeneratedColumn()
     id: number
 
-    @Column({unique: true})
+    @Column()
     slug: string
 
     @Column()
@@ -41,4 +41,6 @@ export class ArticleEntity{
     @Column({default: 0})
     favoritesCount:number
 
+    @Column('simple-array')
+    tagList:string[]
 }

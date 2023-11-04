@@ -1,15 +1,21 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Profile } from 'src/profile/profile.interface';
+import { TagsRO } from 'src/tag/tag.interface';
+import { TagService } from 'src/tag/tag.service';
 import { UserEntity } from 'src/user/user.entity';
-import { DeleteResult, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { ArticleEntity } from './article.entity';
 import { Article, ArticleRO } from './article.interface';
 import { ArticleDto, UpdateArticleDto } from './dto';
+import { difference } from 'lodash';
 
 @Injectable()
 export class ArticleService {
-    constructor(@InjectRepository(ArticleEntity) private articleRepository:Repository<ArticleEntity>){}
+    constructor(
+        @InjectRepository(ArticleEntity) private articleRepository:Repository<ArticleEntity>,
+        private tagService:TagService
+    ){}
     
     async createArticle(currentUser:UserEntity, dto:ArticleDto): Promise<ArticleRO>{
         const article:ArticleEntity = new ArticleEntity()
@@ -18,6 +24,13 @@ export class ArticleService {
         article.description = dto.description
         article.slug = this.slugify(dto.title)
         article.author = currentUser
+        article.tagList = dto.tagList
+
+        const tags:TagsRO = await this.tagService.getAllTags()
+
+        const tagsToAdd:string[] = difference(dto.tagList, tags.tags)
+
+        await this.tagService.bulkCreate(tagsToAdd)
 
         const savedArticle:ArticleEntity = await this.articleRepository.save(article)
         return this.buildArticleRO(savedArticle)
@@ -83,7 +96,7 @@ export class ArticleService {
             favorited,
             favoritesCount: entity.favoritesCount,
             slug: entity.slug,
-            tagList: [],
+            tagList: entity.tagList,
             author: {
                 bio: entity.author.bio,
                 image: entity.author.image,

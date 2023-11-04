@@ -1,5 +1,7 @@
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { TagEntity } from 'src/tag/tag.entity';
+import { TagModule } from 'src/tag/tag.module';
 import { AuthMiddleware } from 'src/user/auth.middleware';
 import { UserEntity } from 'src/user/user.entity';
 import { ArticleController } from './article.controller';
@@ -8,6 +10,7 @@ import { ArticleService } from './article.service';
 
 @Module({
   imports:[
+    TagModule,
     TypeOrmModule.forFeature([UserEntity, ArticleEntity])
   ],
   controllers: [ArticleController],

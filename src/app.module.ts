@@ -10,8 +10,6 @@ import { TagModule } from './tag/tag.module';
 
 @Module({
   imports: [
-    UserModule,
-    ProfileModule,
     ConfigModule.forRoot({
       // envFilePath: '../.env',
       isGlobal: true,
@@ -27,6 +25,8 @@ import { TagModule } from './tag/tag.module';
       autoLoadEntities: true, //It will load all the entities mentioned in 'entities' of forFeature()
       synchronize: true, //TODO: Why do we need it?
     }),
+    UserModule,
+    ProfileModule,
     ProfileModule,
     ArticleModule,
     TagModule,
