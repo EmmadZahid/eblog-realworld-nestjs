@@ -1,3 +1,3 @@
-export class TagsRO{
-    tags: string[]
+export class TagsRO {
+  tags: string[];
 }
