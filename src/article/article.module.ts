@@ -19,7 +19,8 @@ export class ArticleModule {
       .apply(AuthMiddleware)
       .forRoutes(
         { path: 'articles', method: RequestMethod.POST },
-        { path: 'articles/:slug', method: RequestMethod.PUT }
+        { path: 'articles/:slug', method: RequestMethod.PUT },
+        { path: 'articles/:slug', method: RequestMethod.DELETE }
       );
   }
 }

@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Profile } from 'src/profile/profile.interface';
 import { UserEntity } from 'src/user/user.entity';
-import { Repository } from 'typeorm';
+import { DeleteResult, Repository } from 'typeorm';
 import { ArticleEntity } from './article.entity';
 import { Article, ArticleRO } from './article.interface';
 import { ArticleDto, UpdateArticleDto } from './dto';
@@ -52,9 +52,25 @@ export class ArticleService {
                 relations:["author"]
             }
         )
-        console.log(freshArticle);
         
         return this.buildArticleRO(freshArticle)
+    }
+
+    async deleteArticle(currentUser:UserEntity, slug:string){
+        const toDelete:ArticleEntity = await this.articleRepository.findOne({
+            where:{
+                slug
+            },
+            relations:["author"]
+        })
+        
+        if(!toDelete)
+            throw new NotFoundException({message: "Not found"})
+
+        if(toDelete.author.id != currentUser.id)
+            throw new ForbiddenException({message: "You dont have permission to delete it"})
+        
+        await this.articleRepository.delete({id: toDelete.id})
     }
 
     private buildArticleRO(entity:ArticleEntity, following:boolean = false, favorited:boolean = false):ArticleRO{
