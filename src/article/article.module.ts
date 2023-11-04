@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, RequestMethod } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ProfileModule } from 'src/profile/profile.module';
 import { TagEntity } from 'src/tag/tag.entity';
 import { TagModule } from 'src/tag/tag.module';
 import { AuthMiddleware } from 'src/user/auth.middleware';
@@ -11,6 +12,7 @@ import { ArticleService } from './article.service';
 @Module({
   imports:[
     TagModule,
+    ProfileModule,
     TypeOrmModule.forFeature([UserEntity, ArticleEntity])
   ],
   controllers: [ArticleController],
@@ -23,7 +25,8 @@ export class ArticleModule {
       .forRoutes(
         { path: 'articles', method: RequestMethod.POST },
         { path: 'articles/:slug', method: RequestMethod.PUT },
-        { path: 'articles/:slug', method: RequestMethod.DELETE }
+        { path: 'articles/:slug', method: RequestMethod.DELETE },
+        { path: 'articles/:slug', method: RequestMethod.GET }
       );
   }
 }

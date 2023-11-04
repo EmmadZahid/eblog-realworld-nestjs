@@ -9,12 +9,14 @@ import { ArticleEntity } from './article.entity';
 import { Article, ArticleRO } from './article.interface';
 import { ArticleDto, UpdateArticleDto } from './dto';
 import { difference } from 'lodash';
+import { ProfileService } from 'src/profile/profile.service';
 
 @Injectable()
 export class ArticleService {
     constructor(
         @InjectRepository(ArticleEntity) private articleRepository:Repository<ArticleEntity>,
-        private tagService:TagService
+        private tagService:TagService,
+        private profileService:ProfileService
     ){}
     
     async createArticle(currentUser:UserEntity, dto:ArticleDto): Promise<ArticleRO>{
@@ -34,6 +36,19 @@ export class ArticleService {
 
         const savedArticle:ArticleEntity = await this.articleRepository.save(article)
         return this.buildArticleRO(savedArticle)
+    }
+
+    async getArticle(currentUser:UserEntity, slug:string): Promise<ArticleRO>{
+        const article:ArticleEntity = await this.articleRepository.findOne({
+            where:{
+                slug
+            },
+            relations: ['author']
+        })
+
+        const following:boolean = await this.profileService.doesFollowProfile(currentUser.id, article.author.id)
+
+        return this.buildArticleRO(article, following)
     }
 
     async updateArticle(currentUser:UserEntity, slug:string, dto:UpdateArticleDto): Promise<ArticleRO>{

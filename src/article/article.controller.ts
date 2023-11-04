@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Param, ParseIntPipe, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put } from '@nestjs/common';
 import { GetUser } from 'src/user/decorator/user.decorator';
 import { UserEntity } from 'src/user/user.entity';
 import { DeleteResult } from 'typeorm';
@@ -13,6 +13,11 @@ export class ArticleController {
     @Post()
     createArticle(@GetUser() currentUser:UserEntity, @Body('article') dto:ArticleDto): Promise<ArticleRO>{
         return this.articleService.createArticle(currentUser, dto)
+    }
+
+    @Get(':slug')
+    getArticle(@Param('slug') slug:string, @GetUser() currentUser:UserEntity): Promise<ArticleRO>{
+        return this.articleService.getArticle(currentUser, slug)
     }
 
     @Put(':slug')

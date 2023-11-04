@@ -11,6 +11,7 @@ import { ProfileService } from './profile.service';
   imports: [TypeOrmModule.forFeature([UserEntity, FollowerEntity]), UserModule],
   controllers: [ProfileController],
   providers: [ProfileService],
+  exports: [ProfileService]
 })
 export class ProfileModule {
   public configure(consumer: MiddlewareConsumer) {

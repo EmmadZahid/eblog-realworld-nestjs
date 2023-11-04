@@ -32,6 +32,17 @@ export class ProfileService {
     return this.buildProfileRO(user, follower ? true : false);
   }
 
+  async doesFollowProfile(followerId: number, followedId: number):Promise<boolean> {
+    
+    const follower: FollowerEntity = await this.followerRepository
+      .createQueryBuilder('followers')
+      .where('followers.userId = :id', { id: followedId })
+      .andWhere('followers.followerId = :followerId', { followerId })
+      .getOne();
+
+      return (follower) ? true : false
+  }
+
   async followProfile(
     followerId: number,
     username: string,
