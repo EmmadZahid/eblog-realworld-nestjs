@@ -4,9 +4,9 @@ import { TagService } from './tag.service';
 
 @Controller('tags')
 export class TagController {
-  constructor(private tagService: TagService) {}
-  @Get()
-  getTags(): Promise<TagsRO> {
-    return this.tagService.getAllTags();
-  }
+    constructor(private tagService: TagService) {}
+    @Get()
+    getTags(): Promise<TagsRO> {
+        return this.tagService.getAllTags();
+    }
 }

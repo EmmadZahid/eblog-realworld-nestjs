@@ -9,23 +9,23 @@ import { ArticleEntity } from './article.entity';
 import { ArticleService } from './article.service';
 
 @Module({
-  imports: [
-    TagModule,
-    ProfileModule,
-    TypeOrmModule.forFeature([UserEntity, ArticleEntity]),
-  ],
-  controllers: [ArticleController],
-  providers: [ArticleService],
+    imports: [
+        TagModule,
+        ProfileModule,
+        TypeOrmModule.forFeature([UserEntity, ArticleEntity]),
+    ],
+    controllers: [ArticleController],
+    providers: [ArticleService],
 })
 export class ArticleModule {
-  public configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(AuthMiddleware)
-      .forRoutes(
-        { path: 'articles', method: RequestMethod.POST },
-        { path: 'articles/:slug', method: RequestMethod.PUT },
-        { path: 'articles/:slug', method: RequestMethod.DELETE },
-        { path: 'articles/:slug', method: RequestMethod.GET },
-      );
-  }
+    public configure(consumer: MiddlewareConsumer) {
+        consumer
+            .apply(AuthMiddleware)
+            .forRoutes(
+                { path: 'articles', method: RequestMethod.POST },
+                { path: 'articles/:slug', method: RequestMethod.PUT },
+                { path: 'articles/:slug', method: RequestMethod.DELETE },
+                { path: 'articles/:slug', method: RequestMethod.GET },
+            );
+    }
 }

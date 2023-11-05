@@ -6,25 +6,26 @@ import { TagsRO } from './tag.interface';
 
 @Injectable()
 export class TagService {
-  constructor(
-    @InjectRepository(TagEntity) private tagRepository: Repository<TagEntity>,
-  ) {}
+    constructor(
+        @InjectRepository(TagEntity)
+        private tagRepository: Repository<TagEntity>,
+    ) {}
 
-  async bulkCreate(tags: string[]) {
-    const tagEntities: TagEntity[] = [];
-    tags.forEach((tag) => {
-      const tagEntity: TagEntity = new TagEntity();
-      tagEntity.tag = tag;
-      tagEntities.push(tagEntity);
-    });
-    await this.tagRepository.save(tagEntities);
-  }
+    async bulkCreate(tags: string[]) {
+        const tagEntities: TagEntity[] = [];
+        tags.forEach((tag) => {
+            const tagEntity: TagEntity = new TagEntity();
+            tagEntity.tag = tag;
+            tagEntities.push(tagEntity);
+        });
+        await this.tagRepository.save(tagEntities);
+    }
 
-  async getAllTags(): Promise<TagsRO> {
-    const tags: TagEntity[] = (await this.tagRepository.find()) || [];
-    const tagNames: string[] = tags.map((tag) => tag.tag) || [];
-    return {
-      tags: tagNames,
-    } as TagsRO;
-  }
+    async getAllTags(): Promise<TagsRO> {
+        const tags: TagEntity[] = (await this.tagRepository.find()) || [];
+        const tagNames: string[] = tags.map((tag) => tag.tag) || [];
+        return {
+            tags: tagNames,
+        } as TagsRO;
+    }
 }

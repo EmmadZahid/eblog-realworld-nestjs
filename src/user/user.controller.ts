@@ -7,18 +7,18 @@ import { UserService } from './user.service';
 
 @Controller('user')
 export class UserController {
-  constructor(private userService: UserService) {}
+    constructor(private userService: UserService) {}
 
-  @Get()
-  findMe(@GetUser() currentUser: UserEntity): UserRO {
-    return this.userService.buildUserRO(currentUser);
-  }
+    @Get()
+    findMe(@GetUser() currentUser: UserEntity): UserRO {
+        return this.userService.buildUserRO(currentUser);
+    }
 
-  @Put()
-  async updateMe(
-    @GetUser('id', ParseIntPipe) currentUserId: number,
-    @Body('user') dto: UpdateUserDto,
-  ): Promise<UserRO> {
-    return this.userService.updateUser(currentUserId, dto);
-  }
+    @Put()
+    async updateMe(
+        @GetUser('id', ParseIntPipe) currentUserId: number,
+        @Body('user') dto: UpdateUserDto,
+    ): Promise<UserRO> {
+        return this.userService.updateUser(currentUserId, dto);
+    }
 }

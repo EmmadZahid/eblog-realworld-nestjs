@@ -9,29 +9,29 @@ import { ArticleModule } from './article/article.module';
 import { TagModule } from './tag/tag.module';
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({
-      // envFilePath: '../.env',
-      isGlobal: true,
-    }),
-    TypeOrmModule.forRoot({
-      //TODO: Thing how we can read all these configurations from .env and give it here
-      type: 'mysql',
-      host: 'localhost',
-      port: 3306,
-      username: 'root',
-      password: '1q2w3e4r.',
-      database: 'eblog_db',
-      autoLoadEntities: true, //It will load all the entities mentioned in 'entities' of forFeature()
-      synchronize: true, //TODO: Why do we need it?
-    }),
-    UserModule,
-    ProfileModule,
-    ProfileModule,
-    ArticleModule,
-    TagModule,
-  ],
-  controllers: [AppController],
-  providers: [AppService],
+    imports: [
+        ConfigModule.forRoot({
+            // envFilePath: '../.env',
+            isGlobal: true,
+        }),
+        TypeOrmModule.forRoot({
+            //TODO: Thing how we can read all these configurations from .env and give it here
+            type: 'mysql',
+            host: 'localhost',
+            port: 3306,
+            username: 'root',
+            password: '1q2w3e4r.',
+            database: 'eblog_db',
+            autoLoadEntities: true, //It will load all the entities mentioned in 'entities' of forFeature()
+            synchronize: true, //TODO: Why do we need it?
+        }),
+        UserModule,
+        ProfileModule,
+        ProfileModule,
+        ArticleModule,
+        TagModule,
+    ],
+    controllers: [AppController],
+    providers: [AppService],
 })
 export class AppModule {}
