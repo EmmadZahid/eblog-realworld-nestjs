@@ -60,4 +60,20 @@ export class ArticleController {
     ) {
         this.articleService.deleteArticle(currentUser, slug);
     }
+
+    @Post(':slug/favorite')
+    favoriteArticle(
+        @Param('slug') slug: string,
+        @GetUser() currentUser: UserEntity,
+    ): Promise<ArticleRO> {
+        return this.articleService.favoriteArticle(currentUser, slug);
+    }
+
+    @Delete(':slug/favorite')
+    unfavoriteArticle(
+        @Param('slug') slug: string,
+        @GetUser() currentUser: UserEntity,
+    ): Promise<ArticleRO> {
+        return this.articleService.unfavoriteArticle(currentUser, slug);
+    }
 }

@@ -27,6 +27,11 @@ export class ArticleModule {
                 { path: 'articles/:slug', method: RequestMethod.DELETE },
                 { path: 'articles/:slug', method: RequestMethod.GET },
                 { path: 'articles/feed', method: RequestMethod.GET },
+                { path: 'articles/:slug/favorite', method: RequestMethod.POST },
+                {
+                    path: 'articles/:slug/favorite',
+                    method: RequestMethod.DELETE,
+                },
             );
     }
 }

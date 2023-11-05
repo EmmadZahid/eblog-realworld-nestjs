@@ -35,10 +35,6 @@ export class ArticleEntity {
 
     @Column({ nullable: true })
     updatedAt: Date;
-    @BeforeUpdate()
-    assignUpdatedDate() {
-        this.updatedAt = new Date();
-    }
 
     @ManyToOne(() => UserEntity)
     @JoinColumn({

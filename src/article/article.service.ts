@@ -20,6 +20,8 @@ export class ArticleService {
     constructor(
         @InjectRepository(ArticleEntity)
         private articleRepository: Repository<ArticleEntity>,
+        @InjectRepository(UserEntity)
+        private userRepository: Repository<UserEntity>,
         private tagService: TagService,
         private profileService: ProfileService,
     ) {}
@@ -89,6 +91,7 @@ export class ArticleService {
         if (dto.body) toUpdate.body = dto.body;
         if (dto.description) toUpdate.description = dto.description;
 
+        toUpdate.updatedAt = new Date();
         //TODO:The updatedArticle does not have the user object so I am fetching the fresh artcile. Need to investigate why
         // eslint-disable-next-line
         const updatedArticle: ArticleEntity = await this.articleRepository.save(
@@ -122,6 +125,85 @@ export class ArticleService {
             });
 
         await this.articleRepository.delete({ id: toDelete.id });
+    }
+
+    async favoriteArticle(currentUser: UserEntity, slug: string) {
+        const user: UserEntity = await this.userRepository.findOne({
+            where: {
+                id: currentUser.id,
+            },
+            relations: ['favoriteArticles'],
+        });
+
+        let favoriteArticle: ArticleEntity =
+            await this.articleRepository.findOne({
+                where: {
+                    slug,
+                },
+                relations: ['author'],
+            });
+
+        if (!favoriteArticle)
+            throw new NotFoundException({ message: 'Article not found' });
+
+        const following: boolean = await this.profileService.doesFollowProfile(
+            currentUser.id,
+            favoriteArticle.author.id,
+        );
+        const isNewFavorite: boolean =
+            user.favoriteArticles.findIndex((article) => article.slug == slug) <
+            0;
+
+        if (isNewFavorite) {
+            favoriteArticle.favoritesCount++;
+            await this.articleRepository.save(favoriteArticle);
+
+            user.favoriteArticles = [...user.favoriteArticles, favoriteArticle];
+            await this.userRepository.save(user);
+        }
+
+        return this.buildArticleRO(favoriteArticle, following, true);
+    }
+
+    async unfavoriteArticle(currentUser: UserEntity, slug: string) {
+        const user: UserEntity = await this.userRepository.findOne({
+            where: {
+                id: currentUser.id,
+            },
+            relations: ['favoriteArticles'],
+        });
+
+        let favoriteArticle: ArticleEntity =
+            await this.articleRepository.findOne({
+                where: {
+                    slug,
+                },
+                relations: ['author'],
+            });
+
+        if (!favoriteArticle)
+            throw new NotFoundException({ message: 'Article not found' });
+
+        const following: boolean = await this.profileService.doesFollowProfile(
+            currentUser.id,
+            favoriteArticle.author.id,
+        );
+        const isFavorite: boolean =
+            user.favoriteArticles.findIndex((article) => article.slug == slug) >
+            -1;
+        console.log(isFavorite);
+        if (isFavorite) {
+            console.log(isFavorite);
+            favoriteArticle.favoritesCount--;
+            await this.articleRepository.save(favoriteArticle);
+
+            const favoriteArticles: ArticleEntity[] =
+                user.favoriteArticles.filter((article) => article.slug != slug);
+            user.favoriteArticles = [...favoriteArticles];
+            await this.userRepository.save(user);
+        }
+
+        return this.buildArticleRO(favoriteArticle, following, false);
     }
 
     async getFeed(currentUserId: number, limit: number, offset: number) {

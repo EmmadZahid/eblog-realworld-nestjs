@@ -1,5 +1,13 @@
-import { BeforeInsert, Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+    BeforeInsert,
+    Column,
+    Entity,
+    JoinTable,
+    ManyToMany,
+    PrimaryGeneratedColumn,
+} from 'typeorm';
 import * as argon from 'argon2';
+import { ArticleEntity } from 'src/article/article.entity';
 
 @Entity({ name: 'users' })
 export class UserEntity {
@@ -25,4 +33,8 @@ export class UserEntity {
     async hashPassword() {
         this.password = await argon.hash(this.password);
     }
+
+    @ManyToMany(() => ArticleEntity)
+    @JoinTable()
+    favoriteArticles: ArticleEntity[];
 }
