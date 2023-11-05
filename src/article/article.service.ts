@@ -8,9 +8,9 @@ import { Profile } from 'src/profile/profile.interface';
 import { TagsRO } from 'src/tag/tag.interface';
 import { TagService } from 'src/tag/tag.service';
 import { UserEntity } from 'src/user/user.entity';
-import { Repository } from 'typeorm';
+import { Repository, SelectQueryBuilder } from 'typeorm';
 import { ArticleEntity } from './article.entity';
-import { Article, ArticleRO } from './article.interface';
+import { Article, ArticleRO, ArticlesRO } from './article.interface';
 import { ArticleDto, UpdateArticleDto } from './dto';
 import { difference } from 'lodash';
 import { ProfileService } from 'src/profile/profile.service';
@@ -55,7 +55,9 @@ export class ArticleService {
             where: {
                 slug,
             },
-            relations: ['author'],
+            relations: {
+                author: true,
+            },
         });
 
         const following: boolean = await this.profileService.doesFollowProfile(
@@ -89,7 +91,7 @@ export class ArticleService {
 
         //TODO:The updatedArticle does not have the user object so I am fetching the fresh artcile. Need to investigate why
         // eslint-disable-next-line
-    const updatedArticle: ArticleEntity = await this.articleRepository.save(
+        const updatedArticle: ArticleEntity = await this.articleRepository.save(
             toUpdate,
             { reload: true },
         );
@@ -120,6 +122,65 @@ export class ArticleService {
             });
 
         await this.articleRepository.delete({ id: toDelete.id });
+    }
+
+    async getFeed(currentUserId: number, limit: number, offset: number) {
+        const followedAuthorIds: number[] =
+            await this.profileService.getFollowedAuthorIds(currentUserId);
+
+        if (!followedAuthorIds.length) {
+            return this.buildArticlesRO([], 0);
+        }
+
+        limit = Math.max(limit, 5);
+        offset = Math.max(offset, 0);
+
+        let selectQuery: SelectQueryBuilder<ArticleEntity> =
+            await this.articleRepository
+                .createQueryBuilder('articles')
+                .where('articles.authorId IN (:...ids)', {
+                    ids: followedAuthorIds,
+                });
+        const articlesCount: number = await selectQuery.getCount();
+
+        const articles: ArticleEntity[] = await selectQuery
+            .leftJoinAndSelect('articles.author', 'author')
+            .limit(limit)
+            .skip(offset)
+            .orderBy('updatedAt', 'DESC')
+            .getMany();
+
+        return this.buildArticlesRO(articles, articlesCount);
+    }
+
+    private buildArticlesRO(
+        entities: ArticleEntity[],
+        articlesCount,
+    ): ArticlesRO {
+        const articles: Article[] = entities.map((entity) => {
+            return {
+                title: entity.title,
+                description: entity.description,
+                body: entity.body,
+                createdAt: entity.createdAt,
+                updatedAt: entity.updatedAt,
+                favorited: false,
+                favoritesCount: entity.favoritesCount,
+                slug: entity.slug,
+                tagList: entity.tagList,
+                author: {
+                    bio: entity.author.bio,
+                    image: entity.author.image,
+                    username: entity.author.username,
+                    following: true,
+                } as Profile,
+            };
+        });
+
+        return {
+            articles,
+            articlesCount,
+        } as ArticlesRO;
     }
 
     private buildArticleRO(

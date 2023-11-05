@@ -24,6 +24,7 @@ import { TagModule } from './tag/tag.module';
             database: 'eblog_db',
             autoLoadEntities: true, //It will load all the entities mentioned in 'entities' of forFeature()
             synchronize: true, //TODO: Why do we need it?
+            logging: false,
         }),
         UserModule,
         ProfileModule,

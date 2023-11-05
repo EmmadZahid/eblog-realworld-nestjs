@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from 'src/user/user.entity';
 import { Repository } from 'typeorm';
-import { FollowerEntity } from './follower.entity';
+import { FollowingEntity } from './following.entity';
 import { Profile, ProfileRO } from './profile.interface';
 
 @Injectable()
@@ -10,8 +10,8 @@ export class ProfileService {
     constructor(
         @InjectRepository(UserEntity)
         private userRepository: Repository<UserEntity>,
-        @InjectRepository(FollowerEntity)
-        private followerRepository: Repository<FollowerEntity>,
+        @InjectRepository(FollowingEntity)
+        private followingRepository: Repository<FollowingEntity>,
     ) {}
 
     async getProfile(followerId: number, username: string) {
@@ -24,10 +24,10 @@ export class ProfileService {
         if (!user)
             throw new BadRequestException({ message: 'Invalid username' });
 
-        const follower: FollowerEntity = await this.followerRepository
-            .createQueryBuilder('followers')
-            .where('followers.userId = :id', { id: user.id })
-            .andWhere('followers.followerId = :followerId', { followerId })
+        const follower: FollowingEntity = await this.followingRepository
+            .createQueryBuilder('following')
+            .where('following.followedId = :id', { id: user.id })
+            .andWhere('following.followerId = :followerId', { followerId })
             .getOne();
 
         return this.buildProfileRO(user, follower ? true : false);
@@ -37,56 +37,79 @@ export class ProfileService {
         followerId: number,
         followedId: number,
     ): Promise<boolean> {
-        const follower: FollowerEntity = await this.followerRepository
-            .createQueryBuilder('followers')
-            .where('followers.userId = :id', { id: followedId })
-            .andWhere('followers.followerId = :followerId', { followerId })
+        const follower: FollowingEntity = await this.followingRepository
+            .createQueryBuilder('following')
+            .where('following.followedId = :id', { id: followedId })
+            .andWhere('following.followerId = :followerId', { followerId })
             .getOne();
 
         return follower ? true : false;
+    }
+
+    async getFollowedAuthorIds(currentUserId: number): Promise<number[]> {
+        const userFollowing: FollowingEntity[] =
+            await this.followingRepository.find({
+                where: {
+                    follower: {
+                        id: currentUserId,
+                    },
+                },
+                relations: ['followed'],
+            });
+
+        const authorIds: number[] = userFollowing.map(
+            (record: FollowingEntity) => record.followed.id,
+        );
+
+        return authorIds;
     }
 
     async followProfile(
         followerId: number,
         username: string,
     ): Promise<ProfileRO> {
-        const user: UserEntity = await this.userRepository.findOne({
+        const followed: UserEntity = await this.userRepository.findOne({
             where: {
                 username,
             },
         });
 
-        if (!user)
+        if (!followed)
             throw new BadRequestException({ message: 'Invalid username' });
 
-        const follower: FollowerEntity = new FollowerEntity();
-        follower.userId = user.id;
-        follower.followerId = followerId;
+        const follower: UserEntity = new UserEntity();
+        follower.id = followerId;
 
-        await this.followerRepository.save(follower);
+        const following: FollowingEntity = new FollowingEntity();
+        following.followed = followed;
+        following.follower = follower;
 
-        return this.buildProfileRO(user, true);
+        await this.followingRepository.save(following);
+
+        return this.buildProfileRO(followed, true);
     }
 
     async unfollowProfile(
         followerId: number,
         username: string,
     ): Promise<ProfileRO> {
-        const user: UserEntity = await this.userRepository.findOne({
+        const followed: UserEntity = await this.userRepository.findOne({
             where: {
                 username,
             },
         });
 
-        if (!user)
+        if (!followed)
             throw new BadRequestException({ message: 'Invalid username' });
 
-        await this.followerRepository.delete({
-            followerId,
-            userId: user.id,
-        });
+        await this.followingRepository
+            .createQueryBuilder()
+            .delete()
+            .where('followerId = :followerId', { followerId })
+            .andWhere('followedId = :followedId', { followedId: followed.id })
+            .execute();
 
-        return this.buildProfileRO(user, false);
+        return this.buildProfileRO(followed, false);
     }
 
     private buildProfileRO(user: UserEntity, following: boolean): ProfileRO {

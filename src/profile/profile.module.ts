@@ -3,13 +3,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthMiddleware } from 'src/user/auth.middleware';
 import { UserEntity } from 'src/user/user.entity';
 import { UserModule } from 'src/user/user.module';
-import { FollowerEntity } from './follower.entity';
+import { FollowingEntity } from './following.entity';
 import { ProfileController } from './profile.controller';
 import { ProfileService } from './profile.service';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([UserEntity, FollowerEntity]),
+        TypeOrmModule.forFeature([UserEntity, FollowingEntity]),
         UserModule,
     ],
     controllers: [ProfileController],

@@ -4,12 +4,14 @@ import {
     Delete,
     Get,
     Param,
+    ParseIntPipe,
     Post,
     Put,
+    Query,
 } from '@nestjs/common';
 import { GetUser } from 'src/user/decorator/user.decorator';
 import { UserEntity } from 'src/user/user.entity';
-import { ArticleRO } from './article.interface';
+import { ArticleRO, ArticlesRO } from './article.interface';
 import { ArticleService } from './article.service';
 import { ArticleDto, UpdateArticleDto } from './dto';
 
@@ -23,6 +25,15 @@ export class ArticleController {
         @Body('article') dto: ArticleDto,
     ): Promise<ArticleRO> {
         return this.articleService.createArticle(currentUser, dto);
+    }
+
+    @Get('feed')
+    getFeed(
+        @GetUser('id', ParseIntPipe) currentUserId: number,
+        @Query('limit', ParseIntPipe) limit: number = 0,
+        @Query('offset', ParseIntPipe) offset: number = 5,
+    ): Promise<ArticlesRO> {
+        return this.articleService.getFeed(currentUserId, limit, offset);
     }
 
     @Get(':slug')
