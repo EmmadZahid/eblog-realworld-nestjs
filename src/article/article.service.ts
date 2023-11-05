@@ -191,9 +191,8 @@ export class ArticleService {
         const isFavorite: boolean =
             user.favoriteArticles.findIndex((article) => article.slug == slug) >
             -1;
-        console.log(isFavorite);
+
         if (isFavorite) {
-            console.log(isFavorite);
             favoriteArticle.favoritesCount--;
             await this.articleRepository.save(favoriteArticle);
 
