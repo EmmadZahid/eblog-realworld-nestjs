@@ -14,6 +14,8 @@ import { Article, ArticleRO, ArticlesRO } from './article.interface';
 import { ArticleDto, UpdateArticleDto } from './dto';
 import { difference } from 'lodash';
 import { ProfileService } from 'src/profile/profile.service';
+import { FindArticleQueryDto } from './dto/find-article-query-dto';
+import { PageConfigDto } from './dto/page-config.dto';
 
 @Injectable()
 export class ArticleService {
@@ -49,6 +51,77 @@ export class ArticleService {
         return this.buildArticleRO(savedArticle);
     }
 
+    async getArticles(
+        currentUser: UserEntity,
+        query: FindArticleQueryDto,
+    ): Promise<ArticlesRO> {
+        const qb: SelectQueryBuilder<ArticleEntity> = this.articleRepository
+            .createQueryBuilder('articles')
+            .leftJoinAndSelect('articles.author', 'author')
+            .where('1 = 1');
+
+        if (query.tag) {
+            qb.andWhere('articles.tagList like :tag', {
+                tag: `%${query.tag}%`,
+            });
+        }
+
+        if (query.author) {
+            qb.andWhere('author.username = :name', {
+                name: query.author,
+            });
+        }
+
+        if (query.favorited) {
+            const favorited: UserEntity = await this.userRepository.findOne({
+                where: { username: query.favorited },
+                relations: ['favoriteArticles'],
+            });
+            if (favorited) {
+                const articleIds: number[] = favorited.favoriteArticles.map(
+                    (article) => article.id,
+                );
+                qb.andWhere('articles.id in (:articleIds)', { articleIds });
+            }
+        }
+
+        const articlesCount: number = await qb.getCount();
+
+        let offset: number = 0;
+        if (query.offset) offset = Math.max(query.offset, 0);
+
+        let limit: number = 20;
+        if (query.limit) limit = Math.max(query.limit, 1);
+
+        const searchedArticles: ArticleEntity[] = await qb
+            .offset(offset)
+            .limit(limit)
+            .orderBy('createdAt', 'DESC')
+            .getMany();
+
+        let favoriteArticleIds: number[] = [];
+        let followedIds: number[] = [];
+
+        //If the user is logged in then we have to populate the favorited and following properties
+        if (currentUser) {
+            favoriteArticleIds = await this.checkIfArticleIsFavourite(
+                currentUser,
+                searchedArticles,
+            );
+            followedIds = await this.checkIfAuthorIsFollowedByCurrentUser(
+                currentUser,
+                searchedArticles,
+            );
+        }
+
+        return this.buildArticlesRO(
+            searchedArticles,
+            articlesCount,
+            followedIds,
+            favoriteArticleIds,
+        );
+    }
+
     async getArticle(
         currentUser: UserEntity,
         slug: string,
@@ -62,12 +135,16 @@ export class ArticleService {
             },
         });
 
-        const following: boolean = await this.profileService.doesFollowProfile(
-            currentUser.id,
-            article.author.id,
-        );
+        if (!article) throw new NotFoundException({ message: 'Not found' });
+        const followedIds: number[] =
+            await this.profileService.doesFollowProfiles(currentUser.id, [
+                article.author.id,
+            ]);
 
-        return this.buildArticleRO(article, following);
+        return this.buildArticleRO(
+            article,
+            followedIds.length > 0 ? true : false,
+        );
     }
 
     async updateArticle(
@@ -146,10 +223,11 @@ export class ArticleService {
         if (!favoriteArticle)
             throw new NotFoundException({ message: 'Article not found' });
 
-        const following: boolean = await this.profileService.doesFollowProfile(
-            currentUser.id,
-            favoriteArticle.author.id,
-        );
+        const followedIds: number[] =
+            await this.profileService.doesFollowProfiles(currentUser.id, [
+                favoriteArticle.author.id,
+            ]);
+
         const isNewFavorite: boolean =
             user.favoriteArticles.findIndex((article) => article.slug == slug) <
             0;
@@ -162,7 +240,11 @@ export class ArticleService {
             await this.userRepository.save(user);
         }
 
-        return this.buildArticleRO(favoriteArticle, following, true);
+        return this.buildArticleRO(
+            favoriteArticle,
+            followedIds.length > 0 ? true : false,
+            true,
+        );
     }
 
     async unfavoriteArticle(currentUser: UserEntity, slug: string) {
@@ -184,10 +266,10 @@ export class ArticleService {
         if (!favoriteArticle)
             throw new NotFoundException({ message: 'Article not found' });
 
-        const following: boolean = await this.profileService.doesFollowProfile(
-            currentUser.id,
-            favoriteArticle.author.id,
-        );
+        const followedIds: number[] =
+            await this.profileService.doesFollowProfiles(currentUser.id, [
+                favoriteArticle.author.id,
+            ]);
         const isFavorite: boolean =
             user.favoriteArticles.findIndex((article) => article.slug == slug) >
             -1;
@@ -202,19 +284,26 @@ export class ArticleService {
             await this.userRepository.save(user);
         }
 
-        return this.buildArticleRO(favoriteArticle, following, false);
+        return this.buildArticleRO(
+            favoriteArticle,
+            followedIds.length > 0 ? true : false,
+            false,
+        );
     }
 
-    async getFeed(currentUserId: number, limit: number, offset: number) {
+    async getFeed(currentUser: UserEntity, query: PageConfigDto) {
         const followedAuthorIds: number[] =
-            await this.profileService.getFollowedAuthorIds(currentUserId);
+            await this.profileService.getFollowedAuthorIds(currentUser.id);
 
         if (!followedAuthorIds.length) {
             return this.buildArticlesRO([], 0);
         }
 
-        limit = Math.max(limit, 5);
-        offset = Math.max(offset, 0);
+        let offset: number = 0;
+        if (query.offset) offset = Math.max(query.offset, 0);
+
+        let limit: number = 20;
+        if (query.limit) limit = Math.max(query.limit, 1);
 
         let selectQuery: SelectQueryBuilder<ArticleEntity> =
             await this.articleRepository
@@ -226,17 +315,34 @@ export class ArticleService {
 
         const articles: ArticleEntity[] = await selectQuery
             .leftJoinAndSelect('articles.author', 'author')
+            .offset(offset)
             .limit(limit)
-            .skip(offset)
-            .orderBy('updatedAt', 'DESC')
+            .orderBy('updatedAt', 'DESC') //Check what if the article is not updated
             .getMany();
 
-        return this.buildArticlesRO(articles, articlesCount);
+        let favoriteArticleIds: number[] = await this.checkIfArticleIsFavourite(
+            currentUser,
+            articles,
+        );
+        let followedIds: number[] =
+            await this.checkIfAuthorIsFollowedByCurrentUser(
+                currentUser,
+                articles,
+            );
+
+        return this.buildArticlesRO(
+            articles,
+            articlesCount,
+            followedIds,
+            favoriteArticleIds,
+        );
     }
 
     private buildArticlesRO(
         entities: ArticleEntity[],
         articlesCount,
+        followedAuthorIds: number[] = [],
+        favoriteArticleIds: number[] = [],
     ): ArticlesRO {
         const articles: Article[] = entities.map((entity) => {
             return {
@@ -245,7 +351,7 @@ export class ArticleService {
                 body: entity.body,
                 createdAt: entity.createdAt,
                 updatedAt: entity.updatedAt,
-                favorited: false,
+                favorited: favoriteArticleIds.includes(entity.id),
                 favoritesCount: entity.favoritesCount,
                 slug: entity.slug,
                 tagList: entity.tagList,
@@ -253,7 +359,7 @@ export class ArticleService {
                     bio: entity.author.bio,
                     image: entity.author.image,
                     username: entity.author.username,
-                    following: true,
+                    following: followedAuthorIds.includes(entity.author.id), //TODO
                 } as Profile,
             };
         });
@@ -298,5 +404,47 @@ export class ArticleService {
             '-' +
             ((Math.random() * Math.pow(36, 6)) | 0).toString(36)
         );
+    }
+
+    private async checkIfArticleIsFavourite(
+        currentUser: UserEntity,
+        articles: ArticleEntity[],
+    ): Promise<number[]> {
+        const articleIds: number[] = articles.map((article) => article.id);
+        const currentUserWithFavoriteArticles: UserEntity =
+            await this.userRepository
+                .createQueryBuilder('user')
+                .leftJoinAndSelect('user.favoriteArticles', 'favoriteArticles')
+                .where('user.id = :userId', { userId: currentUser.id })
+                .andWhere('favoriteArticles.id in (:articleIds)', {
+                    articleIds,
+                })
+                .getOne();
+
+        let favoriteArticleIds: number[] = [];
+        if (currentUserWithFavoriteArticles)
+            favoriteArticleIds =
+                currentUserWithFavoriteArticles.favoriteArticles.map(
+                    (article) => article.id,
+                );
+        return favoriteArticleIds;
+    }
+
+    private async checkIfAuthorIsFollowedByCurrentUser(
+        currentUser: UserEntity,
+        articles: ArticleEntity[],
+    ): Promise<number[]> {
+        //Does follow
+        const uniqueAuthorIds: number[] = [
+            ...new Set(articles.map((article) => article.author.id)),
+        ];
+
+        let followedIds: number[] =
+            (await this.profileService.doesFollowProfiles(
+                currentUser.id,
+                uniqueAuthorIds,
+            )) || [];
+
+        return followedIds;
     }
 }

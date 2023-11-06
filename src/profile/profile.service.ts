@@ -33,17 +33,25 @@ export class ProfileService {
         return this.buildProfileRO(user, follower ? true : false);
     }
 
-    async doesFollowProfile(
+    async doesFollowProfiles(
         followerId: number,
-        followedId: number,
-    ): Promise<boolean> {
-        const follower: FollowingEntity = await this.followingRepository
+        followedIds: number[],
+    ): Promise<number[]> {
+        const follower: FollowingEntity[] = await this.followingRepository
             .createQueryBuilder('following')
-            .where('following.followedId = :id', { id: followedId })
-            .andWhere('following.followerId = :followerId', { followerId })
-            .getOne();
+            .leftJoinAndSelect('following.followed', 'followed')
+            .leftJoinAndSelect('following.follower', 'follower')
+            .where('following.followerId = :id', { id: followerId })
+            .andWhere('following.followedId IN (:followedIds)', {
+                followedIds,
+            })
+            .getMany();
 
-        return follower ? true : false;
+        const followingData: number[] = follower.map((following) => {
+            return following.followed.id;
+        });
+
+        return followingData;
     }
 
     async getFollowedAuthorIds(currentUserId: number): Promise<number[]> {

@@ -46,5 +46,5 @@ export class ArticleEntity {
     favoritesCount: number;
 
     @Column('simple-array')
-    tagList: string[];
+    tagList: string[]; //The tag should not have ',' inside the word
 }

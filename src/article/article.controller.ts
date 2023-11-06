@@ -14,10 +14,20 @@ import { UserEntity } from 'src/user/user.entity';
 import { ArticleRO, ArticlesRO } from './article.interface';
 import { ArticleService } from './article.service';
 import { ArticleDto, UpdateArticleDto } from './dto';
+import { FindArticleQueryDto } from './dto/find-article-query-dto';
+import { PageConfigDto } from './dto/page-config.dto';
 
 @Controller('articles')
 export class ArticleController {
     constructor(private articleService: ArticleService) {}
+
+    @Get()
+    getArticles(
+        @GetUser() currentUser: UserEntity,
+        @Query() query: FindArticleQueryDto,
+    ): Promise<ArticlesRO> {
+        return this.articleService.getArticles(currentUser, query);
+    }
 
     @Post()
     createArticle(
@@ -29,11 +39,10 @@ export class ArticleController {
 
     @Get('feed')
     getFeed(
-        @GetUser('id', ParseIntPipe) currentUserId: number,
-        @Query('limit', ParseIntPipe) limit: number = 0,
-        @Query('offset', ParseIntPipe) offset: number = 5,
+        @GetUser() currentUser: UserEntity,
+        @Query() query: PageConfigDto,
     ): Promise<ArticlesRO> {
-        return this.articleService.getFeed(currentUserId, limit, offset);
+        return this.articleService.getFeed(currentUser, query);
     }
 
     @Get(':slug')
@@ -41,6 +50,8 @@ export class ArticleController {
         @Param('slug') slug: string,
         @GetUser() currentUser: UserEntity,
     ): Promise<ArticleRO> {
+        console.log('asdsa');
+
         return this.articleService.getArticle(currentUser, slug);
     }
 

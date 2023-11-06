@@ -19,19 +19,18 @@ import { ArticleService } from './article.service';
 })
 export class ArticleModule {
     public configure(consumer: MiddlewareConsumer) {
-        consumer
-            .apply(AuthMiddleware)
-            .forRoutes(
-                { path: 'articles', method: RequestMethod.POST },
-                { path: 'articles/:slug', method: RequestMethod.PUT },
-                { path: 'articles/:slug', method: RequestMethod.DELETE },
-                { path: 'articles/:slug', method: RequestMethod.GET },
-                { path: 'articles/feed', method: RequestMethod.GET },
-                { path: 'articles/:slug/favorite', method: RequestMethod.POST },
-                {
-                    path: 'articles/:slug/favorite',
-                    method: RequestMethod.DELETE,
-                },
-            );
+        consumer.apply(AuthMiddleware).forRoutes(
+            { path: 'articles', method: RequestMethod.GET },
+            { path: 'articles', method: RequestMethod.POST },
+            { path: 'articles/:slug', method: RequestMethod.PUT },
+            { path: 'articles/:slug', method: RequestMethod.DELETE },
+            { path: 'articles/:slug', method: RequestMethod.GET },
+            { path: 'articles/feed', method: RequestMethod.GET },
+            { path: 'articles/:slug/favorite', method: RequestMethod.POST },
+            {
+                path: 'articles/:slug/favorite',
+                method: RequestMethod.DELETE,
+            },
+        );
     }
 }
