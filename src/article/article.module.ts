@@ -7,13 +7,10 @@ import { UserEntity } from 'src/user/user.entity';
 import { ArticleController } from './article.controller';
 import { ArticleEntity } from './article.entity';
 import { ArticleService } from './article.service';
+import { CommentEntity } from './comment.entity';
 
 @Module({
-    imports: [
-        TagModule,
-        ProfileModule,
-        TypeOrmModule.forFeature([UserEntity, ArticleEntity]),
-    ],
+    imports: [TagModule, ProfileModule, TypeOrmModule.forFeature([UserEntity, ArticleEntity, CommentEntity])],
     controllers: [ArticleController],
     providers: [ArticleService],
 })
@@ -31,6 +28,8 @@ export class ArticleModule {
                 path: 'articles/:slug/favorite',
                 method: RequestMethod.DELETE,
             },
+            { path: 'articles/:slug/comments', method: RequestMethod.POST },
+            { path: 'articles/:slug/comments', method: RequestMethod.GET },
         );
     }
 }

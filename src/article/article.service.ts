@@ -1,8 +1,4 @@
-import {
-    ForbiddenException,
-    Injectable,
-    NotFoundException,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Profile } from 'src/profile/profile.interface';
 import { TagsRO } from 'src/tag/tag.interface';
@@ -16,6 +12,9 @@ import { difference } from 'lodash';
 import { ProfileService } from 'src/profile/profile.service';
 import { FindArticleQueryDto } from './dto/find-article-query-dto';
 import { PageConfigDto } from './dto/page-config.dto';
+import { CommentDto } from './dto/comment.dto';
+import { Comment, CommentRO, CommentsRO } from './comment.interface';
+import { CommentEntity } from './comment.entity';
 
 @Injectable()
 export class ArticleService {
@@ -24,14 +23,13 @@ export class ArticleService {
         private articleRepository: Repository<ArticleEntity>,
         @InjectRepository(UserEntity)
         private userRepository: Repository<UserEntity>,
+        @InjectRepository(CommentEntity)
+        private commentRepository: Repository<CommentEntity>,
         private tagService: TagService,
         private profileService: ProfileService,
     ) {}
 
-    async createArticle(
-        currentUser: UserEntity,
-        dto: ArticleDto,
-    ): Promise<ArticleRO> {
+    async createArticle(currentUser: UserEntity, dto: ArticleDto): Promise<ArticleRO> {
         const article: ArticleEntity = new ArticleEntity();
         article.title = dto.title;
         article.body = dto.body;
@@ -46,15 +44,11 @@ export class ArticleService {
 
         await this.tagService.bulkCreate(tagsToAdd);
 
-        const savedArticle: ArticleEntity =
-            await this.articleRepository.save(article);
+        const savedArticle: ArticleEntity = await this.articleRepository.save(article);
         return this.buildArticleRO(savedArticle);
     }
 
-    async getArticles(
-        currentUser: UserEntity,
-        query: FindArticleQueryDto,
-    ): Promise<ArticlesRO> {
+    async getArticles(currentUser: UserEntity, query: FindArticleQueryDto): Promise<ArticlesRO> {
         const qb: SelectQueryBuilder<ArticleEntity> = this.articleRepository
             .createQueryBuilder('articles')
             .leftJoinAndSelect('articles.author', 'author')
@@ -78,9 +72,7 @@ export class ArticleService {
                 relations: ['favoriteArticles'],
             });
             if (favorited) {
-                const articleIds: number[] = favorited.favoriteArticles.map(
-                    (article) => article.id,
-                );
+                const articleIds: number[] = favorited.favoriteArticles.map((article) => article.id);
                 qb.andWhere('articles.id in (:articleIds)', { articleIds });
             }
         }
@@ -93,39 +85,22 @@ export class ArticleService {
         let limit: number = 20;
         if (query.limit) limit = Math.max(query.limit, 1);
 
-        const searchedArticles: ArticleEntity[] = await qb
-            .offset(offset)
-            .limit(limit)
-            .orderBy('createdAt', 'DESC')
-            .getMany();
+        const searchedArticles: ArticleEntity[] = await qb.offset(offset).limit(limit).orderBy('createdAt', 'DESC').getMany();
 
         let favoriteArticleIds: number[] = [];
         let followedIds: number[] = [];
 
         //If the user is logged in then we have to populate the favorited and following properties
         if (currentUser) {
-            favoriteArticleIds = await this.checkIfArticleIsFavourite(
-                currentUser,
-                searchedArticles,
-            );
-            followedIds = await this.checkIfAuthorIsFollowedByCurrentUser(
-                currentUser,
-                searchedArticles,
-            );
+            favoriteArticleIds = await this.checkIfArticleIsFavourite(currentUser, searchedArticles);
+            const authors: UserEntity[] = searchedArticles.map((article) => article.author);
+            followedIds = await this.checkIfAuthorIsFollowedByCurrentUser(currentUser, authors);
         }
 
-        return this.buildArticlesRO(
-            searchedArticles,
-            articlesCount,
-            followedIds,
-            favoriteArticleIds,
-        );
+        return this.buildArticlesRO(searchedArticles, articlesCount, followedIds, favoriteArticleIds);
     }
 
-    async getArticle(
-        currentUser: UserEntity,
-        slug: string,
-    ): Promise<ArticleRO> {
+    async getArticle(currentUser: UserEntity, slug: string): Promise<ArticleRO> {
         const article: ArticleEntity = await this.articleRepository.findOne({
             where: {
                 slug,
@@ -136,22 +111,12 @@ export class ArticleService {
         });
 
         if (!article) throw new NotFoundException({ message: 'Not found' });
-        const followedIds: number[] =
-            await this.profileService.doesFollowProfiles(currentUser.id, [
-                article.author.id,
-            ]);
+        const followedIds: number[] = await this.profileService.doesFollowProfiles(currentUser.id, [article.author.id]);
 
-        return this.buildArticleRO(
-            article,
-            followedIds.length > 0 ? true : false,
-        );
+        return this.buildArticleRO(article, followedIds.length > 0 ? true : false);
     }
 
-    async updateArticle(
-        currentUser: UserEntity,
-        slug: string,
-        dto: UpdateArticleDto,
-    ): Promise<ArticleRO> {
+    async updateArticle(currentUser: UserEntity, slug: string, dto: UpdateArticleDto): Promise<ArticleRO> {
         const toUpdate: ArticleEntity = await this.articleRepository
             .createQueryBuilder('articles')
             .where('articles.slug = :slug', { slug })
@@ -171,17 +136,13 @@ export class ArticleService {
         toUpdate.updatedAt = new Date();
         //TODO:The updatedArticle does not have the user object so I am fetching the fresh artcile. Need to investigate why
         // eslint-disable-next-line
-        const updatedArticle: ArticleEntity = await this.articleRepository.save(
-            toUpdate,
-            { reload: true },
-        );
-        const freshArticle: ArticleEntity =
-            await this.articleRepository.findOne({
-                where: {
-                    id: toUpdate.id,
-                },
-                relations: ['author'],
-            });
+        const updatedArticle: ArticleEntity = await this.articleRepository.save(toUpdate, { reload: true });
+        const freshArticle: ArticleEntity = await this.articleRepository.findOne({
+            where: {
+                id: toUpdate.id,
+            },
+            relations: ['author'],
+        });
 
         return this.buildArticleRO(freshArticle);
     }
@@ -212,25 +173,18 @@ export class ArticleService {
             relations: ['favoriteArticles'],
         });
 
-        let favoriteArticle: ArticleEntity =
-            await this.articleRepository.findOne({
-                where: {
-                    slug,
-                },
-                relations: ['author'],
-            });
+        let favoriteArticle: ArticleEntity = await this.articleRepository.findOne({
+            where: {
+                slug,
+            },
+            relations: ['author'],
+        });
 
-        if (!favoriteArticle)
-            throw new NotFoundException({ message: 'Article not found' });
+        if (!favoriteArticle) throw new NotFoundException({ message: 'Article not found' });
 
-        const followedIds: number[] =
-            await this.profileService.doesFollowProfiles(currentUser.id, [
-                favoriteArticle.author.id,
-            ]);
+        const followedIds: number[] = await this.profileService.doesFollowProfiles(currentUser.id, [favoriteArticle.author.id]);
 
-        const isNewFavorite: boolean =
-            user.favoriteArticles.findIndex((article) => article.slug == slug) <
-            0;
+        const isNewFavorite: boolean = user.favoriteArticles.findIndex((article) => article.slug == slug) < 0;
 
         if (isNewFavorite) {
             favoriteArticle.favoritesCount++;
@@ -240,11 +194,7 @@ export class ArticleService {
             await this.userRepository.save(user);
         }
 
-        return this.buildArticleRO(
-            favoriteArticle,
-            followedIds.length > 0 ? true : false,
-            true,
-        );
+        return this.buildArticleRO(favoriteArticle, followedIds.length > 0 ? true : false, true);
     }
 
     async unfavoriteArticle(currentUser: UserEntity, slug: string) {
@@ -255,45 +205,32 @@ export class ArticleService {
             relations: ['favoriteArticles'],
         });
 
-        let favoriteArticle: ArticleEntity =
-            await this.articleRepository.findOne({
-                where: {
-                    slug,
-                },
-                relations: ['author'],
-            });
+        let favoriteArticle: ArticleEntity = await this.articleRepository.findOne({
+            where: {
+                slug,
+            },
+            relations: ['author'],
+        });
 
-        if (!favoriteArticle)
-            throw new NotFoundException({ message: 'Article not found' });
+        if (!favoriteArticle) throw new NotFoundException({ message: 'Article not found' });
 
-        const followedIds: number[] =
-            await this.profileService.doesFollowProfiles(currentUser.id, [
-                favoriteArticle.author.id,
-            ]);
-        const isFavorite: boolean =
-            user.favoriteArticles.findIndex((article) => article.slug == slug) >
-            -1;
+        const followedIds: number[] = await this.profileService.doesFollowProfiles(currentUser.id, [favoriteArticle.author.id]);
+        const isFavorite: boolean = user.favoriteArticles.findIndex((article) => article.slug == slug) > -1;
 
         if (isFavorite) {
             favoriteArticle.favoritesCount--;
             await this.articleRepository.save(favoriteArticle);
 
-            const favoriteArticles: ArticleEntity[] =
-                user.favoriteArticles.filter((article) => article.slug != slug);
+            const favoriteArticles: ArticleEntity[] = user.favoriteArticles.filter((article) => article.slug != slug);
             user.favoriteArticles = [...favoriteArticles];
             await this.userRepository.save(user);
         }
 
-        return this.buildArticleRO(
-            favoriteArticle,
-            followedIds.length > 0 ? true : false,
-            false,
-        );
+        return this.buildArticleRO(favoriteArticle, followedIds.length > 0 ? true : false, false);
     }
 
     async getFeed(currentUser: UserEntity, query: PageConfigDto) {
-        const followedAuthorIds: number[] =
-            await this.profileService.getFollowedAuthorIds(currentUser.id);
+        const followedAuthorIds: number[] = await this.profileService.getFollowedAuthorIds(currentUser.id);
 
         if (!followedAuthorIds.length) {
             return this.buildArticlesRO([], 0);
@@ -305,12 +242,11 @@ export class ArticleService {
         let limit: number = 20;
         if (query.limit) limit = Math.max(query.limit, 1);
 
-        let selectQuery: SelectQueryBuilder<ArticleEntity> =
-            await this.articleRepository
-                .createQueryBuilder('articles')
-                .where('articles.authorId IN (:...ids)', {
-                    ids: followedAuthorIds,
-                });
+        let selectQuery: SelectQueryBuilder<ArticleEntity> = await this.articleRepository
+            .createQueryBuilder('articles')
+            .where('articles.authorId IN (:...ids)', {
+                ids: followedAuthorIds,
+            });
         const articlesCount: number = await selectQuery.getCount();
 
         const articles: ArticleEntity[] = await selectQuery
@@ -320,30 +256,65 @@ export class ArticleService {
             .orderBy('updatedAt', 'DESC') //Check what if the article is not updated
             .getMany();
 
-        let favoriteArticleIds: number[] = await this.checkIfArticleIsFavourite(
-            currentUser,
-            articles,
-        );
-        let followedIds: number[] =
-            await this.checkIfAuthorIsFollowedByCurrentUser(
-                currentUser,
-                articles,
-            );
+        let favoriteArticleIds: number[] = await this.checkIfArticleIsFavourite(currentUser, articles);
+        const authors: UserEntity[] = articles.map((article) => article.author);
+        let followedIds: number[] = await this.checkIfAuthorIsFollowedByCurrentUser(currentUser, authors);
 
-        return this.buildArticlesRO(
-            articles,
-            articlesCount,
-            followedIds,
-            favoriteArticleIds,
-        );
+        return this.buildArticlesRO(articles, articlesCount, followedIds, favoriteArticleIds);
     }
 
-    private buildArticlesRO(
-        entities: ArticleEntity[],
-        articlesCount,
-        followedAuthorIds: number[] = [],
-        favoriteArticleIds: number[] = [],
-    ): ArticlesRO {
+    async addComment(currentUser: UserEntity, slug: string, commentDto: CommentDto): Promise<CommentRO> {
+        const article: ArticleEntity = await this.articleRepository.findOne({
+            where: {
+                slug,
+            },
+            relations: ['comments'],
+        });
+
+        if (!article) throw new NotFoundException({ message: 'Article not found' });
+
+        const newComment: CommentEntity = new CommentEntity();
+        newComment.body = commentDto.body;
+        newComment.article = article;
+        newComment.author = currentUser;
+
+        const savedComment: CommentEntity = await this.commentRepository.save(newComment);
+        const freshComment: CommentEntity = await this.commentRepository.findOne({
+            where: {
+                id: newComment.id,
+            },
+            relations: ['author'],
+        });
+
+        article.comments = [...(article.comments || []), savedComment];
+
+        await this.articleRepository.save(article);
+
+        return this.buildCommentRO(freshComment, false);
+    }
+
+    async getComments(currentUser: UserEntity, slug: string): Promise<CommentsRO> {
+        const article: ArticleEntity = await this.articleRepository.findOne({
+            where: {
+                slug,
+            },
+        });
+
+        const comments: CommentEntity[] =
+            (await this.commentRepository
+                .createQueryBuilder('comment')
+                .leftJoin('comment.article', 'article')
+                .leftJoinAndSelect('comment.author', 'author')
+                .where('article.id = :articleId', { articleId: article.id })
+                .getMany()) || [];
+
+        const authors: UserEntity[] = comments.map((comment) => comment.author).filter((author) => author != null);
+
+        let followedIds: number[] = await this.checkIfAuthorIsFollowedByCurrentUser(currentUser, authors);
+        return this.buildCommentsRO(comments || [], followedIds);
+    }
+
+    private buildArticlesRO(entities: ArticleEntity[], articlesCount, followedAuthorIds: number[] = [], favoriteArticleIds: number[] = []): ArticlesRO {
         const articles: Article[] = entities.map((entity) => {
             return {
                 title: entity.title,
@@ -370,11 +341,7 @@ export class ArticleService {
         } as ArticlesRO;
     }
 
-    private buildArticleRO(
-        entity: ArticleEntity,
-        following: boolean = false,
-        favorited: boolean = false,
-    ): ArticleRO {
+    private buildArticleRO(entity: ArticleEntity, following: boolean = false, favorited: boolean = false): ArticleRO {
         const article: Article = {
             title: entity.title,
             description: entity.description,
@@ -398,52 +365,70 @@ export class ArticleService {
         };
     }
 
-    private slugify(title: string): string {
-        return (
-            title.split(' ').join('-').toLowerCase() +
-            '-' +
-            ((Math.random() * Math.pow(36, 6)) | 0).toString(36)
-        );
+    private buildCommentsRO(entities: CommentEntity[], followedAuthorIds: number[] = []): CommentsRO {
+        const comments: Comment[] = entities.map((entity) => {
+            return {
+                body: entity.body,
+                createdAt: entity.createdAt,
+                updatedAt: entity.updatedAt,
+                id: entity.id,
+                author: {
+                    bio: entity.author?.bio,
+                    image: entity.author?.image,
+                    username: entity.author?.username,
+                    following: followedAuthorIds.includes(entity.author?.id),
+                } as Profile,
+            } as Comment;
+        });
+
+        return {
+            comments,
+        } as CommentsRO;
     }
 
-    private async checkIfArticleIsFavourite(
-        currentUser: UserEntity,
-        articles: ArticleEntity[],
-    ): Promise<number[]> {
+    private buildCommentRO(entity: CommentEntity, following: boolean = false): CommentRO {
+        const comment: Comment = {
+            body: entity.body,
+            createdAt: entity.createdAt,
+            updatedAt: entity.updatedAt,
+            id: entity.id,
+            author: {
+                bio: entity.author?.bio,
+                image: entity.author?.image,
+                username: entity.author?.username,
+                following,
+            } as Profile,
+        };
+
+        return {
+            comment,
+        };
+    }
+
+    private slugify(title: string): string {
+        return title.split(' ').join('-').toLowerCase() + '-' + ((Math.random() * Math.pow(36, 6)) | 0).toString(36);
+    }
+
+    private async checkIfArticleIsFavourite(currentUser: UserEntity, articles: ArticleEntity[]): Promise<number[]> {
         const articleIds: number[] = articles.map((article) => article.id);
-        const currentUserWithFavoriteArticles: UserEntity =
-            await this.userRepository
-                .createQueryBuilder('user')
-                .leftJoinAndSelect('user.favoriteArticles', 'favoriteArticles')
-                .where('user.id = :userId', { userId: currentUser.id })
-                .andWhere('favoriteArticles.id in (:articleIds)', {
-                    articleIds,
-                })
-                .getOne();
+        const currentUserWithFavoriteArticles: UserEntity = await this.userRepository
+            .createQueryBuilder('user')
+            .leftJoinAndSelect('user.favoriteArticles', 'favoriteArticles')
+            .where('user.id = :userId', { userId: currentUser.id })
+            .andWhere('favoriteArticles.id in (:articleIds)', {
+                articleIds,
+            })
+            .getOne();
 
         let favoriteArticleIds: number[] = [];
-        if (currentUserWithFavoriteArticles)
-            favoriteArticleIds =
-                currentUserWithFavoriteArticles.favoriteArticles.map(
-                    (article) => article.id,
-                );
+        if (currentUserWithFavoriteArticles) favoriteArticleIds = currentUserWithFavoriteArticles.favoriteArticles.map((article) => article.id);
         return favoriteArticleIds;
     }
 
-    private async checkIfAuthorIsFollowedByCurrentUser(
-        currentUser: UserEntity,
-        articles: ArticleEntity[],
-    ): Promise<number[]> {
-        //Does follow
-        const uniqueAuthorIds: number[] = [
-            ...new Set(articles.map((article) => article.author.id)),
-        ];
+    private async checkIfAuthorIsFollowedByCurrentUser(currentUser: UserEntity, authors: UserEntity[]): Promise<number[]> {
+        const uniqueAuthorIds: number[] = [...new Set(authors.map((author) => author.id))];
 
-        let followedIds: number[] =
-            (await this.profileService.doesFollowProfiles(
-                currentUser.id,
-                uniqueAuthorIds,
-            )) || [];
+        let followedIds: number[] = (await this.profileService.doesFollowProfiles(currentUser.id, uniqueAuthorIds)) || [];
 
         return followedIds;
     }

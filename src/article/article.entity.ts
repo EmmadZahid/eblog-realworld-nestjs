@@ -1,13 +1,6 @@
 import { UserEntity } from 'src/user/user.entity';
-import {
-    BeforeInsert,
-    BeforeUpdate,
-    Column,
-    Entity,
-    JoinColumn,
-    ManyToOne,
-    PrimaryGeneratedColumn,
-} from 'typeorm';
+import { BeforeInsert, BeforeUpdate, Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { CommentEntity } from './comment.entity';
 
 @Entity({ name: 'articles' })
 export class ArticleEntity {
@@ -47,4 +40,7 @@ export class ArticleEntity {
 
     @Column('simple-array')
     tagList: string[]; //The tag should not have ',' inside the word
+
+    @OneToMany(() => CommentEntity, (comment) => comment.article)
+    comments: CommentEntity[];
 }

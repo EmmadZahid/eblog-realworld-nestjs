@@ -1,8 +1,4 @@
-import {
-    Injectable,
-    NestMiddleware,
-    UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, NestMiddleware, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -24,10 +20,7 @@ export class AuthMiddleware implements NestMiddleware {
         if (authHeader) {
             try {
                 const token: string = authHeader.split(' ')[1];
-                const decoded = jwt.verify(
-                    token,
-                    this.configService.get('SECRET'),
-                );
+                const decoded = jwt.verify(token, this.configService.get('SECRET'));
                 if (decoded.exp < new Date().getTime()) {
                     throw new UnauthorizedException({
                         message: 'Invalid token',
