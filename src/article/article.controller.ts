@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Query } from '@nestjs/common';
 import { GetUser } from 'src/user/decorator/user.decorator';
 import { UserEntity } from 'src/user/user.entity';
+import { DeleteResult } from 'typeorm';
 import { ArticleRO, ArticlesRO } from './article.interface';
 import { ArticleService } from './article.service';
 import { CommentRO, CommentsRO } from './comment.interface';
@@ -63,5 +64,10 @@ export class ArticleController {
     @Get(':slug/comments')
     getComment(@Param('slug') slug: string, @GetUser() currentUser: UserEntity): Promise<CommentsRO> {
         return this.articleService.getComments(currentUser, slug);
+    }
+
+    @Delete(':slug/comments/:id')
+    deleteComment(@GetUser() currentUser: UserEntity, @Param('slug') slug: string, @Param('id', ParseIntPipe) id: number): Promise<DeleteResult> {
+        return this.articleService.deleteComment(currentUser, slug, id);
     }
 }

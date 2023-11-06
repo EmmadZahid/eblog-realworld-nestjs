@@ -4,7 +4,7 @@ import { Profile } from 'src/profile/profile.interface';
 import { TagsRO } from 'src/tag/tag.interface';
 import { TagService } from 'src/tag/tag.service';
 import { UserEntity } from 'src/user/user.entity';
-import { Repository, SelectQueryBuilder } from 'typeorm';
+import { DeleteResult, Repository, SelectQueryBuilder } from 'typeorm';
 import { ArticleEntity } from './article.entity';
 import { Article, ArticleRO, ArticlesRO } from './article.interface';
 import { ArticleDto, UpdateArticleDto } from './dto';
@@ -312,6 +312,26 @@ export class ArticleService {
 
         let followedIds: number[] = await this.checkIfAuthorIsFollowedByCurrentUser(currentUser, authors);
         return this.buildCommentsRO(comments || [], followedIds);
+    }
+
+    async deleteComment(currentUser: UserEntity, slug: string, commentId: number): Promise<DeleteResult> {
+        const comment: CommentEntity = await this.commentRepository.findOne({
+            where: {
+                id: commentId,
+            },
+            relations: ['author'],
+        });
+
+        if (!comment) throw new NotFoundException({ message: 'comment not found' });
+
+        if (comment.author.id != currentUser.id) throw new ForbiddenException({ message: 'You dont have permission to delete.' });
+
+        return await this.commentRepository
+            .createQueryBuilder('comment')
+            .delete()
+            .where('id = :commentId', { commentId })
+            .andWhere('authorId = :authorId', { authorId: currentUser.id })
+            .execute();
     }
 
     private buildArticlesRO(entities: ArticleEntity[], articlesCount, followedAuthorIds: number[] = [], favoriteArticleIds: number[] = []): ArticlesRO {

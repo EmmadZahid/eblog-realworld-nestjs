@@ -30,6 +30,7 @@ export class ArticleModule {
             },
             { path: 'articles/:slug/comments', method: RequestMethod.POST },
             { path: 'articles/:slug/comments', method: RequestMethod.GET },
+            { path: 'articles/:slug/comments/:id', method: RequestMethod.DELETE },
         );
     }
 }
