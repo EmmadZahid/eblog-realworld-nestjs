@@ -31,6 +31,6 @@ export class CommentEntity {
     })
     author: UserEntity;
 
-    @ManyToOne(() => ArticleEntity, (article) => article.comments)
+    @ManyToOne(() => ArticleEntity, (article) => article.comments, { onDelete: 'CASCADE' })
     article: ArticleEntity;
 }
