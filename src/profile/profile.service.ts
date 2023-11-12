@@ -21,8 +21,7 @@ export class ProfileService {
             },
         });
 
-        if (!user)
-            throw new BadRequestException({ message: 'Invalid username' });
+        if (!user) throw new BadRequestException({ message: 'Invalid username' });
 
         const follower: FollowingEntity = await this.followingRepository
             .createQueryBuilder('following')
@@ -33,10 +32,7 @@ export class ProfileService {
         return this.buildProfileRO(user, follower ? true : false);
     }
 
-    async doesFollowProfiles(
-        followerId: number,
-        followedIds: number[],
-    ): Promise<number[]> {
+    async doesFollowProfiles(followerId: number, followedIds: number[]): Promise<number[]> {
         const follower: FollowingEntity[] = await this.followingRepository
             .createQueryBuilder('following')
             .leftJoinAndSelect('following.followed', 'followed')
@@ -55,35 +51,28 @@ export class ProfileService {
     }
 
     async getFollowedAuthorIds(currentUserId: number): Promise<number[]> {
-        const userFollowing: FollowingEntity[] =
-            await this.followingRepository.find({
-                where: {
-                    follower: {
-                        id: currentUserId,
-                    },
+        const userFollowing: FollowingEntity[] = await this.followingRepository.find({
+            where: {
+                follower: {
+                    id: currentUserId,
                 },
-                relations: ['followed'],
-            });
+            },
+            relations: ['followed'],
+        });
 
-        const authorIds: number[] = userFollowing.map(
-            (record: FollowingEntity) => record.followed.id,
-        );
+        const authorIds: number[] = userFollowing.map((record: FollowingEntity) => record.followed.id);
 
         return authorIds;
     }
 
-    async followProfile(
-        followerId: number,
-        username: string,
-    ): Promise<ProfileRO> {
+    async followProfile(followerId: number, username: string): Promise<ProfileRO> {
         const followed: UserEntity = await this.userRepository.findOne({
             where: {
                 username,
             },
         });
 
-        if (!followed)
-            throw new BadRequestException({ message: 'Invalid username' });
+        if (!followed) throw new BadRequestException({ message: 'Invalid username' });
 
         const follower: UserEntity = new UserEntity();
         follower.id = followerId;
@@ -97,18 +86,14 @@ export class ProfileService {
         return this.buildProfileRO(followed, true);
     }
 
-    async unfollowProfile(
-        followerId: number,
-        username: string,
-    ): Promise<ProfileRO> {
+    async unfollowProfile(followerId: number, username: string): Promise<ProfileRO> {
         const followed: UserEntity = await this.userRepository.findOne({
             where: {
                 username,
             },
         });
 
-        if (!followed)
-            throw new BadRequestException({ message: 'Invalid username' });
+        if (!followed) throw new BadRequestException({ message: 'Invalid username' });
 
         await this.followingRepository
             .createQueryBuilder()

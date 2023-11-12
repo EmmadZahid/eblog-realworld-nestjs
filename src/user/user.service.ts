@@ -1,8 +1,4 @@
-import {
-    BadRequestException,
-    Injectable,
-    UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -54,10 +50,7 @@ export class UserService {
             });
         }
 
-        const isMatch: boolean = await argon.verify(
-            userFound.password,
-            dto.password,
-        );
+        const isMatch: boolean = await argon.verify(userFound.password, dto.password);
 
         if (!isMatch) {
             throw new UnauthorizedException({
@@ -68,10 +61,7 @@ export class UserService {
         return this.buildUserRO(userFound);
     }
 
-    async updateUser(
-        currentUserId: number,
-        dto: UpdateUserDto,
-    ): Promise<UserRO> {
+    async updateUser(currentUserId: number, dto: UpdateUserDto): Promise<UserRO> {
         const user: UserEntity = await this.userRepository.findOne({
             where: {
                 id: currentUserId,
@@ -103,10 +93,7 @@ export class UserService {
         );
     }
 
-    public buildUserRO(
-        entity: UserEntity,
-        includeToken: boolean = true,
-    ): UserRO {
+    public buildUserRO(entity: UserEntity, includeToken: boolean = true): UserRO {
         const user: User = {
             email: entity.email,
             username: entity.username,

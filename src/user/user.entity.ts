@@ -1,11 +1,4 @@
-import {
-    BeforeInsert,
-    Column,
-    Entity,
-    JoinTable,
-    ManyToMany,
-    PrimaryGeneratedColumn,
-} from 'typeorm';
+import { BeforeInsert, Column, Entity, JoinTable, ManyToMany, PrimaryGeneratedColumn } from 'typeorm';
 import * as argon from 'argon2';
 import { ArticleEntity } from 'src/article/article.entity';
 

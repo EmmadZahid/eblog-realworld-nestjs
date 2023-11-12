@@ -15,10 +15,7 @@ export class UserController {
     }
 
     @Put()
-    async updateMe(
-        @GetUser('id', ParseIntPipe) currentUserId: number,
-        @Body('user') dto: UpdateUserDto,
-    ): Promise<UserRO> {
+    async updateMe(@GetUser('id', ParseIntPipe) currentUserId: number, @Body('user') dto: UpdateUserDto): Promise<UserRO> {
         return this.userService.updateUser(currentUserId, dto);
     }
 }

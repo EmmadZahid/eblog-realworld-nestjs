@@ -15,6 +15,7 @@ import { TagModule } from './tag/tag.module';
             isGlobal: true,
         }),
         TypeOrmModule.forRoot({
+            //USe forRootAsync
             //TODO: Thing how we can read all these configurations from .env and give it here
             type: 'mysql',
             host: 'localhost',
