@@ -7,6 +7,7 @@ import { UserModule } from './user/user.module';
 import { ProfileModule } from './profile/profile.module';
 import { ArticleModule } from './article/article.module';
 import { TagModule } from './tag/tag.module';
+import { SharedModule } from './shared/shared.module';
 
 @Module({
     imports: [
@@ -32,6 +33,7 @@ import { TagModule } from './tag/tag.module';
         ProfileModule,
         ArticleModule,
         TagModule,
+        SharedModule,
     ],
     controllers: [AppController],
     providers: [AppService],

@@ -6,15 +6,14 @@ import { AuthLoginDto, AuthRegisterDto, UpdateUserDto } from './dto';
 import { UserEntity } from './user.entity';
 import { User, UserRO } from './user.interface';
 import * as argon from 'argon2';
-// eslint-disable-next-line
-const jwt = require('jsonwebtoken');
+import { TokenService } from 'src/shared/token.service';
 
 @Injectable()
 export class UserService {
     constructor(
         @InjectRepository(UserEntity)
         private userRepository: Repository<UserEntity>,
-        private configService: ConfigService,
+        private tokenService: TokenService,
     ) {}
 
     async registerUser(dto: AuthRegisterDto): Promise<UserRO> {
@@ -81,25 +80,19 @@ export class UserService {
         }
     }
 
-    private generateJWT(user: UserEntity): string {
-        return jwt.sign(
-            {
-                id: user.id,
-                email: user.email,
-                username: user.username,
-                exp: new Date().getTime() + 60 * 60 * 1000, //on hour
-            },
-            this.configService.get('SECRET'),
-        );
-    }
-
     public buildUserRO(entity: UserEntity, includeToken: boolean = true): UserRO {
+        const tokenData: { email: string; username: string; id: number } = {
+            email: entity.email,
+            username: entity.username,
+            id: entity.id,
+        };
+
         const user: User = {
             email: entity.email,
             username: entity.username,
             bio: entity.bio ? entity.bio : '',
             image: entity.image ? entity.image : null,
-            token: includeToken ? this.generateJWT(entity) : null,
+            token: includeToken ? this.tokenService.generateJWT(tokenData) : null,
         };
         if (!includeToken) delete user.token;
         return {

@@ -5,9 +5,10 @@ import { UserService } from './user.service';
 import { UserEntity } from './user.entity';
 import { UserController } from './user.controller';
 import { AuthMiddleware } from './auth.middleware';
+import { SharedModule } from 'src/shared/shared.module';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([UserEntity])],
+    imports: [TypeOrmModule.forFeature([UserEntity]), SharedModule],
     controllers: [UserAuthController, UserController],
     providers: [UserService],
 })
