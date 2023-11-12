@@ -2,19 +2,20 @@ import { BadRequestException } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { SharedModule } from 'src/shared/shared.module';
+import { TokenService } from 'src/shared/token.service';
 import { Repository } from 'typeorm';
-import { AuthRegisterDto } from '../dto';
-import { UserAuthController } from '../user-auth.controller';
 import { UserEntity } from '../user.entity';
 import { UserRO } from '../user.interface';
 import { UserService } from '../user.service';
-import { UserMockService } from './mocks/user-mock.service';
 import { userAuthRegisterDtoStub, userEntityStub, userROStub, userStub } from './stubs/user.stub';
 
 describe('UserService', () => {
     let userService: UserService;
     let module: TestingModule;
     let userRepository: Repository<UserEntity>;
+    let tokenService: TokenService;
+
     beforeEach(async () => {
         module = await Test.createTestingModule({
             imports: [
@@ -22,6 +23,7 @@ describe('UserService', () => {
                     // envFilePath: '../.env',
                     isGlobal: true,
                 }),
+                SharedModule,
             ],
             providers: [
                 UserService,
@@ -32,10 +34,12 @@ describe('UserService', () => {
                         save: jest.fn().mockResolvedValue(userStub()),
                     },
                 },
+                TokenService,
             ],
         }).compile();
         userService = module.get<UserService>(UserService);
         userRepository = module.get<Repository<UserEntity>>(getRepositoryToken(UserEntity));
+        tokenService = module.get<TokenService>(TokenService);
     });
 
     afterAll(() => {
@@ -70,6 +74,17 @@ describe('UserService', () => {
                 }
 
                 expect(badRequestException).toBeTruthy();
+            });
+
+            it('should return proper object on success', async () => {
+                const userRO: UserRO = userROStub();
+                userRO.user.token = null;
+
+                jest.spyOn(userRepository, 'save').mockResolvedValueOnce(userEntityStub());
+
+                const user: UserRO = await userService.registerUser(userAuthRegisterDtoStub());
+                user.user.token = null;
+                expect(user).toEqual(userRO);
             });
         });
     });
