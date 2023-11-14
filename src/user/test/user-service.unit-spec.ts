@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, HttpException } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -31,60 +31,76 @@ describe('UserService', () => {
                     provide: getRepositoryToken(UserEntity),
                     useValue: {
                         findOne: jest.fn(),
-                        save: jest.fn().mockResolvedValue(userStub()),
+                        save: jest.fn().mockResolvedValue(userEntityStub()),
                     },
                 },
-                TokenService,
+                {
+                    provide: TokenService,
+                    useValue: {
+                        generateJWT: jest.fn().mockReturnValue('jwt token'),
+                    },
+                },
             ],
         }).compile();
+
         userService = module.get<UserService>(UserService);
         userRepository = module.get<Repository<UserEntity>>(getRepositoryToken(UserEntity));
-        tokenService = module.get<TokenService>(TokenService);
     });
 
-    afterAll(() => {
+    afterEach(() => {
         jest.clearAllMocks();
     });
+
     it('should be defined', () => {
         expect(userService).toBeDefined();
     });
+
     describe('register', () => {
         describe('when register is called', () => {
+            it('should return proper object on success', async () => {
+                const userRO: UserRO = userROStub();
+                userRO.user.token = 'jwt token';
+
+                const user: UserRO = await userService.registerUser(userAuthRegisterDtoStub());
+
+                expect(user).toEqual(userRO);
+            });
+
             it('should call findOne of repository', async () => {
-                jest.spyOn(userRepository, 'findOne');
-                jest.spyOn(userRepository, 'save').mockResolvedValueOnce(userEntityStub());
+                // jest.spyOn(userRepository, 'findOne');
                 await userService.registerUser(userAuthRegisterDtoStub());
                 expect(userRepository.findOne).toHaveBeenCalled();
             });
 
             it('should call save of repository', async () => {
+                const userEntityStubObj: UserEntity = userEntityStub();
+                const userEntity: UserEntity = new UserEntity();
+
+                userEntity.email = userEntityStubObj.email;
+                userEntity.password = userEntityStubObj.password;
+                userEntity.username = userEntityStubObj.username;
+
                 jest.spyOn(userRepository, 'save').mockResolvedValueOnce(userEntityStub());
                 await userService.registerUser(userAuthRegisterDtoStub());
                 expect(userRepository.save).toHaveBeenCalled();
+                expect(userRepository.save).toHaveBeenCalledWith(userEntity);
             });
 
-            it('should call throw error if user already exists', async () => {
+            it('should throw error if user already exists', async () => {
                 jest.spyOn(userRepository, 'findOne').mockResolvedValueOnce(userEntityStub());
 
-                let badRequestException: boolean;
-                try {
-                    await userService.registerUser(userAuthRegisterDtoStub());
-                } catch (error) {
-                    if (error instanceof BadRequestException) badRequestException = true;
-                }
+                const register = userService.registerUser(userAuthRegisterDtoStub());
 
-                expect(badRequestException).toBeTruthy();
+                await expect(register).rejects.toThrow(BadRequestException);
             });
 
-            it('should return proper object on success', async () => {
-                const userRO: UserRO = userROStub();
-                userRO.user.token = null;
+            it('should return proper message if user already exists', async () => {
+                jest.spyOn(userRepository, 'findOne').mockResolvedValueOnce(userEntityStub());
 
-                jest.spyOn(userRepository, 'save').mockResolvedValueOnce(userEntityStub());
-
-                const user: UserRO = await userService.registerUser(userAuthRegisterDtoStub());
-                user.user.token = null;
-                expect(user).toEqual(userRO);
+                const register = userService.registerUser(userAuthRegisterDtoStub());
+                await expect(register).rejects.toThrowErrorObject({
+                    message: 'Username or email already exists',
+                });
             });
         });
     });

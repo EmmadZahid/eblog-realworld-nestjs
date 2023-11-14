@@ -7,9 +7,9 @@ export const userStub = (): User => {
         bio: 'everything',
         email: 'emmad@gmail.com',
         image: null,
-        token: 'some token value',
+        token: null,
         username: 'emmad',
-    } as User;
+    };
 };
 
 export const userROStub = (): UserRO => {
@@ -19,26 +19,29 @@ export const userROStub = (): UserRO => {
 };
 
 export const userAuthRegisterDtoStub = (): AuthRegisterDto => {
+    const user: User = userStub();
     return {
-        email: 'emmad@gmail.com',
+        email: user.email,
         password: '123456',
-        username: 'emmad',
+        username: user.username,
     };
 };
 
 export const userAuthLoginDtoStub = (): AuthLoginDto => {
+    const user: User = userStub();
     return {
-        email: 'emmad@gmail.com',
+        email: user.email,
         password: '123456',
     };
 };
 
 export const userEntityStub = (): UserEntity => {
+    const user: User = userStub();
     return {
-        bio: 'everything',
-        email: 'emmad@gmail.com',
-        image: null,
-        username: 'emmad',
+        bio: user.bio,
+        email: user.email,
+        image: user.image,
+        username: user.username,
         password: '123456',
         id: 1,
         favoriteArticles: [],
