@@ -17,7 +17,10 @@ describe('UserAuthController', () => {
                 UserService,
                 {
                     provide: UserService,
-                    useClass: UserMockService,
+                    useValue: {
+                        registerUser: jest.fn().mockResolvedValue(userROStub()),
+                        loginUser: jest.fn().mockResolvedValue(userROStub()),
+                    },
                 },
             ],
         }).compile();
@@ -44,6 +47,11 @@ describe('UserAuthController', () => {
                 expect(userService.registerUser).toHaveBeenCalled();
             });
 
+            it('then it should call user service with correct params', async () => {
+                user = await controller.register(userAuthRegisterDtoStub());
+                expect(userService.registerUser).toHaveBeenCalledWith(userAuthRegisterDtoStub());
+            });
+
             it('then it should return a userRO', () => {
                 expect(user).toEqual(userROStub());
             });
@@ -57,6 +65,11 @@ describe('UserAuthController', () => {
             it('then it should call user service', async () => {
                 user = await controller.login(userAuthLoginDtoStub());
                 expect(userService.loginUser).toHaveBeenCalled();
+            });
+
+            it('then it should call user service with correct params', async () => {
+                user = await controller.login(userAuthLoginDtoStub());
+                expect(userService.loginUser).toHaveBeenCalledWith(userAuthLoginDtoStub());
             });
 
             it('then it should return a userRO', () => {
