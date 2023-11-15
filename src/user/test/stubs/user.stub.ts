@@ -1,4 +1,4 @@
-import { AuthLoginDto, AuthRegisterDto } from 'src/user/dto';
+import { AuthLoginDto, AuthRegisterDto, UpdateUserDto } from 'src/user/dto';
 import { UserEntity } from 'src/user/user.entity';
 import { User, UserRO } from 'src/user/user.interface';
 
@@ -24,6 +24,17 @@ export const userAuthRegisterDtoStub = (): AuthRegisterDto => {
         email: user.email,
         password: '123456',
         username: user.username,
+    };
+};
+
+export const userUpdateDtoStub = (): UpdateUserDto => {
+    const user: User = userStub();
+    return {
+        email: user.email,
+        password: '123456',
+        username: user.username,
+        bio: user.bio,
+        image: user.image,
     };
 };
 
