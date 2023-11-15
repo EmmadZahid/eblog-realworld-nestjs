@@ -67,17 +67,18 @@ export class UserService {
             },
         });
 
+        if (!user) {
+            throw new BadRequestException({
+                message: "User doesn't exists.",
+            });
+        }
+
         user.bio = dto.bio;
         user.email = dto.email;
         user.image = dto.image;
 
-        try {
-            const savedUser: UserEntity = await this.userRepository.save(user);
-
-            return this.buildUserRO(savedUser);
-        } catch (error) {
-            throw error;
-        }
+        const savedUser: UserEntity = await this.userRepository.save(user);
+        return this.buildUserRO(savedUser);
     }
 
     public buildUserRO(entity: UserEntity, includeToken: boolean = true): UserRO {

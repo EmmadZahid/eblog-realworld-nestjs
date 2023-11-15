@@ -8,8 +8,9 @@ import { Repository } from 'typeorm';
 import { UserEntity } from '../user.entity';
 import { UserRO } from '../user.interface';
 import { UserService } from '../user.service';
-import { userAuthLoginDtoStub, userAuthRegisterDtoStub, userEntityStub, userROStub, userStub } from './stubs/user.stub';
+import { userAuthLoginDtoStub, userAuthRegisterDtoStub, userEntityStub, userROStub, userStub, userUpdateDtoStub } from './stubs/user.stub';
 import * as argon from 'argon2';
+import { UpdateUserDto } from '../dto';
 
 describe('UserService', () => {
     let userService: UserService;
@@ -159,6 +160,55 @@ describe('UserService', () => {
                 await expect(login).rejects.toThrow(UnauthorizedException);
                 await expect(login).rejects.toThrowErrorObject({
                     message: 'Invalid email or password',
+                });
+            });
+        });
+    });
+
+    describe('updateUser', () => {
+        describe('when updateUser is called', () => {
+            beforeEach(() => {
+                jest.spyOn(userRepository, 'findOne').mockResolvedValue(userEntityStub());
+            });
+
+            it('should return proper object on success', async () => {
+                const userRO: UserRO = userROStub();
+                userRO.user.token = 'jwt token';
+
+                const user: UserRO = await userService.updateUser(1, userUpdateDtoStub());
+
+                expect(user).toEqual(userRO);
+            });
+
+            it('should call findOne of repository', async () => {
+                await userService.updateUser(1, userUpdateDtoStub());
+                expect(userRepository.findOne).toHaveBeenCalled();
+            });
+
+            it('should call save of repository', async () => {
+                const userUpdateDto: UpdateUserDto = userUpdateDtoStub();
+                userUpdateDto.bio = 'some bio';
+                userUpdateDto.email = 'new@email.com';
+                userUpdateDto.image = 'some new url of image';
+
+                const userEntity: UserEntity = userEntityStub();
+                userEntity.bio = userUpdateDto.bio;
+                userEntity.email = userUpdateDto.email;
+                userEntity.image = userUpdateDto.image;
+
+                await userService.updateUser(1, userUpdateDto);
+                expect(userRepository.save).toHaveBeenCalled();
+                expect(userRepository.save).toHaveBeenCalledWith(userEntity);
+            });
+
+            it("should throw error if user doesn't exists", async () => {
+                jest.spyOn(userRepository, 'findOne').mockResolvedValueOnce(null);
+
+                const update = userService.updateUser(1, userUpdateDtoStub());
+
+                await expect(update).rejects.toThrow(BadRequestException);
+                await expect(update).rejects.toThrowErrorObject({
+                    message: "User doesn't exists.",
                 });
             });
         });
