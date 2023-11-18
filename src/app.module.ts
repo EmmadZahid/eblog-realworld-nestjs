@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -15,18 +15,20 @@ import { SharedModule } from './shared/shared.module';
             // envFilePath: '../.env',
             isGlobal: true,
         }),
-        TypeOrmModule.forRoot({
-            //USe forRootAsync
-            //TODO: Thing how we can read all these configurations from .env and give it here
-            type: 'mysql',
-            host: 'localhost',
-            port: 3306,
-            username: 'root',
-            password: '1q2w3e4r.',
-            database: 'eblog_db',
-            autoLoadEntities: true, //It will load all the entities mentioned in 'entities' of forFeature()
-            synchronize: true, //TODO: Why do we need it?
-            logging: false,
+        TypeOrmModule.forRootAsync({
+            imports: [ConfigModule],
+            useFactory: (configService: ConfigService) => ({
+                type: 'mysql',
+                host: configService.get('HOST'),
+                port: +configService.get('PORT'),
+                username: configService.get('USERNAME'),
+                password: configService.get('PASSWORD'),
+                database: configService.get('DATABASE'),
+                autoLoadEntities: true, //It will load all the entities mentioned in 'entities' of forFeature()
+                synchronize: true, //TODO: Why do we need it?
+                logging: false,
+            }),
+            inject: [ConfigService],
         }),
         UserModule,
         ProfileModule,
